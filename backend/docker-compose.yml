@@ -42,4 +42,4 @@ services:
 
 networks:
   medicine_network:
-    driver: bridge
+    driver: bridge  
