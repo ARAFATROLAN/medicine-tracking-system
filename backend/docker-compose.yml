@@ -33,8 +33,6 @@ services:
     environment:
       MYSQL_DATABASE: medicine_db
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_PASSWORD: root
-      MYSQL_USER: root
     ports:
       - "3306:3306"
     networks:
@@ -42,4 +40,4 @@ services:
 
 networks:
   medicine_network:
-    driver: bridge  
+    driver: bridge
