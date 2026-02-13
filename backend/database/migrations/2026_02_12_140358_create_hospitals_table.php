@@ -11,13 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('Hospitals', function (Blueprint $table) {
-        $table->id();
-        $table->string('Name');
-        $table->string('Email')->unique();
-        $table->string('Phone');
-        $table->string('Address');
-       $table->timestamps();
+        Schema::create('hospitals', function (Blueprint $table) {
+            $table->id();   // PRIMARY KEY
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->string('phone');
+            $table->string('address');
+            $table->timestamps();
         });
     }
 

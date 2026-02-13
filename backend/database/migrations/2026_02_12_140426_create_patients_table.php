@@ -11,15 +11,22 @@ return new class extends Migration
      */
     public function up(): void
     {
-       Schema::create('patients', function (Blueprint $table) {
-        $table->Hospital_id();
-        $table->string('Name');
-        $table->string('Email')->unique();
-        $table->string('Phone');
-        $table->string('Address');
-        $table->string('Date_of_Birth');
-        $table->string('Health_status');
-        $table->timestamps();
+        Schema::create('patients', function (Blueprint $table) {
+            $table->id();
+            
+            $table->foreignId('hospital_id')
+                  ->constrained('hospitals')
+                  ->onDelete('cascade')
+                  ->onUpdate('cascade');
+            
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->string('phone');
+            $table->string('address');
+            $table->date('date_of_birth');
+            $table->text('health_status')->nullable();
+            
+            $table->timestamps();
         });
     }
 
