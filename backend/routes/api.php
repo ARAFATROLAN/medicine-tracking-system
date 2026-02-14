@@ -11,10 +11,13 @@ use App\Http\Controllers\DeliveryController;
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 
-Route::middleware('auth:sanctum')->group(function () {
+#Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('doctors', DoctorController::class);
     Route::apiResource('patients', PatientController::class);
     Route::apiResource('medicines', MedicineController::class);
     Route::apiResource('prescriptions', PrescriptionController::class);
     Route::apiResource('deliveries', DeliveryController::class);
-});
+    #Route::apiResource('medicines', MedicineController::class);
+
+    Route::post('/logout', [AuthController::class, 'logout']);
+#});
