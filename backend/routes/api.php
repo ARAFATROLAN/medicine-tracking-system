@@ -8,16 +8,17 @@ use App\Http\Controllers\MedicineController;
 use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\DeliveryController;
 
-Route::post('/login', [AuthController::class, 'login']);
+// Public authentication routes
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
 
-#Route::middleware('auth:sanctum')->group(function () {
+// Protected API routes (require Sanctum token)
+Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('doctors', DoctorController::class);
     Route::apiResource('patients', PatientController::class);
     Route::apiResource('medicines', MedicineController::class);
     Route::apiResource('prescriptions', PrescriptionController::class);
     Route::apiResource('deliveries', DeliveryController::class);
-    #Route::apiResource('medicines', MedicineController::class);
 
     Route::post('/logout', [AuthController::class, 'logout']);
-#});
+});

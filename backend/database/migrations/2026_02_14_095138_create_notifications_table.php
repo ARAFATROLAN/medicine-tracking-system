@@ -11,14 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-       Schema::create('user_roles', function (Blueprint $table) {
+        Schema::create('notifications', function (Blueprint $table) {
     $table->id();
-    $table->foreignId('user_id')->constrained('users')->onDelete('cascade'); // link to users
-    $table->foreignId('role_id')->constrained('roles')->onDelete('cascade'); // link to roles
+    $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+    $table->string('message');
+    $table->string('type');
+    $table->timestamp('read_at')->nullable();
+    $table->unsignedBigInteger('reference_id')->nullable();
     $table->timestamps();
-    
 });
-
 
     }
 
@@ -27,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('user_roles');
+        Schema::dropIfExists('notifications');
     }
 };

@@ -48,7 +48,11 @@ class AuthController extends Controller
         }
 
         /** @var \App\Models\User $user */
-        $user = $request->user(); // Use request->user() instead of Auth::user()
+        $user = User::where('email', $request->email)->first();
+
+        if (! $user) {
+            return response()->json(['message' => 'User not found after authentication'], 500);
+        }
 
         /** @var \Laravel\Sanctum\NewAccessToken $accessToken */
         $accessToken = $user->createToken('auth_token');

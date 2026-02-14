@@ -6,5 +6,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class Prescription extends Model
 {
-    //
+    public function patient() {
+    return $this->belongsTo(Patient::class);
+}
+
+public function doctor() {
+    return $this->belongsTo(User::class, 'doctor_id');
+}
+
+public function medicines() {
+    return $this->belongsToMany(Medicine::class, 'prescription_medicine')
+                ->withPivot('quantity', 'dosage'); // pivot attributes
+}
+
 }
