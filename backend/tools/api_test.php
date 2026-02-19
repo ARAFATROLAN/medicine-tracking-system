@@ -8,6 +8,7 @@ function do_get($url){
     echo $res . "\n\n";
 }
 
+
 function do_post($url, $data){
     $opts = [
         'http' => [
@@ -25,6 +26,7 @@ function do_post($url, $data){
     echo implode("\n", $headers) . "\n\n";
     echo $res . "\n\n";
 }
+
 
 $base = 'http://127.0.0.1:8000';
 

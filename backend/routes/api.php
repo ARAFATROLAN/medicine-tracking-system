@@ -9,8 +9,9 @@ use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\DeliveryController;
 
 // Public authentication routes
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('patients', PatientController::class);
+});
 
 // Protected API routes (require Sanctum token)
 Route::middleware('auth:sanctum')->group(function () {
