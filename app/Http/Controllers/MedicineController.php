@@ -36,4 +36,25 @@ class MedicineController extends Controller
         Medicine::destroy($id);
         return response()->json(['message' => 'Deleted successfully'], 200);
     }
+
+    public function lowStock()
+{
+    $medicines = Medicine::where('stock', '<=', 5)->get();
+    return response()->json([
+        'status' => true,
+        'message' => 'Low stock medicines',
+        'data' => $medicines
+    ]);
 }
+
+    public function expired()
+{
+    $medicines = Medicine::where('expiry_date', '<', now())->get();
+    return response()->json([
+        'status' => true,
+        'message' => 'Expired medicines',
+        'data' => $medicines
+    ]);
+}
+}
+
