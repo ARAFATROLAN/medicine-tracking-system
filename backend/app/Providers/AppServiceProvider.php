@@ -37,6 +37,12 @@ class AppServiceProvider extends ServiceProvider
             }
         }
     }
+       protected $listen = [
+        \App\Events\PrescriptionCreated::class => [
+        \App\Listeners\SendPrescriptionNotification::class,
+    ],
+];
+
 
     /**
      * Bootstrap any application services.
