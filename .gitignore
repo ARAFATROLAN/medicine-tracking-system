@@ -1,9 +1,0 @@
-
-*.sqlite*
-
-/.env
-/vendor
-/node_modules
-/public/storage
-/storage/*.key
-/storage/*.lo
