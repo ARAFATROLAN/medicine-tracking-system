@@ -1,0 +1,9 @@
+﻿.git
+node_modules
+vendor
+storage/logs
+storage/framework
+.env
+db_data
+*.zip
+*.sql
