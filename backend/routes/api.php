@@ -10,20 +10,36 @@ use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\ReportController;
 
 /*
-App version 1.0
+|--------------------------------------------------------------------------
+| API Routes - Version 1.0
+|--------------------------------------------------------------------------
 */
 
 Route::prefix('v1')->group(function () {
 
     /*
-    public routes
+    |--------------------------------------------------------------------------
+    | Public Routes (No Authentication Required)
+    |--------------------------------------------------------------------------
     */
 
+    // Health check route (used to test backend connection)
+    Route::get('/ping', function () {
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Backend is working properly 🚀'
+        ]);
+    });
+
+    // Authentication routes
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
 
+
     /*
-    Reported routes(Sanctum)
+    |--------------------------------------------------------------------------
+    | Protected Routes (Require Sanctum Authentication)
+    |--------------------------------------------------------------------------
     */
 
     Route::middleware('auth:sanctum')->group(function () {
@@ -39,24 +55,22 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('deliveries', DeliveryController::class);
 
         /*
-        medicine monitoring
+        |--------------------------------------------------------------------------
+        | Medicine Monitoring
+        |--------------------------------------------------------------------------
         */
 
         Route::get('medicines/low-stock', [MedicineController::class, 'lowStock']);
         Route::get('medicines/expired', [MedicineController::class, 'expired']);
 
         /*
-        reports
+        |--------------------------------------------------------------------------
+        | Reports
+        |--------------------------------------------------------------------------
         */
 
         Route::get('reports/monthly-usage', [ReportController::class, 'monthlyMedicineUsage']);
         Route::get('reports/patient-count', [ReportController::class, 'patientCountPerHospital']);
         Route::get('reports/top-medicines', [ReportController::class, 'topMedicines']);
-
-        Route::get('/test', function () {
-    return response()->json([
-        'message' => 'Backend is working!'
-    ]);
-});
     });
 });
