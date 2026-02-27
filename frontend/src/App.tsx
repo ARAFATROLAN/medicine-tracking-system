@@ -1,5 +1,7 @@
 import React from "react";
+import type { ReactNode } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+<<<<<<< Updated upstream
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -18,6 +20,15 @@ import Settings from "./pages/Admin/Settings";
 // Protected route
 const ProtectedRoute: React.FC<{ children: JSX.Element }> = ({ children }) => {
   const token = localStorage.getItem("token");
+=======
+import Login from "./pages/login";
+import Register from "./pages/register";
+import Dashboard from "./pages/dashboard";
+
+// ProtectedRoute ensures only logged-in users can see Dashboard
+const ProtectedRoute: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const token = localStorage.getItem("token"); // get the dummy token
+>>>>>>> Stashed changes
   return token ? children : <Navigate to="/" replace />;
 };
 

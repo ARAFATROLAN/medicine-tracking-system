@@ -23,7 +23,7 @@ Route::prefix('v1')->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    // Health check route (used to test backend connection)
+    // Health check route
     Route::get('/ping', function () {
         return response()->json([
             'status' => 'success',
@@ -32,9 +32,8 @@ Route::prefix('v1')->group(function () {
     });
 
     // Authentication routes
-    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/register', [AuthController::class, 'register']); // already correct
     Route::post('/login', [AuthController::class, 'login']);
-
 
     /*
     |--------------------------------------------------------------------------
