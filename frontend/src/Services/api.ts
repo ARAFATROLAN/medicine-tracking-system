@@ -1,17 +1,17 @@
-import axios from "axios";
+// src/services/api.ts
 
-const api = axios.create({
-  baseURL: "http://localhost:8000/api/v1",
-});
+const BASE_URL = "http://127.0.0.1:8000/api/v1";
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+export const fetchDashboardStats = async () => {
+  const response = await fetch(`${BASE_URL}/dashboard`, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  });
 
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (!response.ok) {
+    throw new Error("Failed to fetch dashboard data");
   }
 
-  return config;
-});
-
-export default api;
+  return response.json();
+};

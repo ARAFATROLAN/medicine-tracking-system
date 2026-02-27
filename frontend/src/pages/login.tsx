@@ -46,6 +46,17 @@ const Login: React.FC = () => {
         <br />
         <button type="submit">Login</button>
       </form>
+
+      {/* Register Link */}
+      <p style={{ marginTop: "20px", textAlign: "center" }}>
+        Don’t have an account?{" "}
+        <span
+          style={{ color: "#2563eb", cursor: "pointer", fontWeight: "bold" }}
+          onClick={() => navigate("/register")}
+        >
+          Register here
+        </span>
+      </p>
     </div>
   );
 };
