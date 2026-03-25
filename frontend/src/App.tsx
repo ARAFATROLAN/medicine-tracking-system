@@ -1,47 +1,56 @@
+// src/App.tsx
+
 import React from "react";
-import type { ReactNode } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-<<<<<<< Updated upstream
-
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-
-// Layouts
-import DashboardLayout from "./layout/DashboardLayout";
 
 // Pages
-import Dashboard from "./pages/Dashboard";
+import Login from "./pages/login";
+import Register from "./pages/register";
+import Dashboard from "./pages/dashboard";
 import Doctors from "./pages/Admin/Doctors";
 import Pharmacists from "./pages/Admin/Pharmacists";
 import Patients from "./pages/Admin/Patients";
 import Users from "./pages/Admin/Users";
 import Settings from "./pages/Admin/Settings";
 
-// Protected route
-const ProtectedRoute: React.FC<{ children: JSX.Element }> = ({ children }) => {
-  const token = localStorage.getItem("token");
-=======
-import Login from "./pages/login";
-import Register from "./pages/register";
-import Dashboard from "./pages/dashboard";
+// Layouts
+import DashboardLayout from "./layout/DashboardLayout";
 
-// ProtectedRoute ensures only logged-in users can see Dashboard
-const ProtectedRoute: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const token = localStorage.getItem("token"); // get the dummy token
->>>>>>> Stashed changes
-  return token ? children : <Navigate to="/" replace />;
-};
+// Route guards
+import AuthorizedRoute from "./components/AuthorizedRoute";
+import PublicRoute from "./components/PublicRoute";
 
 const App: React.FC = () => {
   return (
     <Router>
       <Routes>
-        {/* Public */}
-        <Route path="/" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        {/* Public routes */}
+        <Route
+          path="/"
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PublicRoute>
+              <Register />
+            </PublicRoute>
+          }
+        />
 
-        {/* Protected Dashboard */}
-        <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+        {/* Protected dashboard route - only accessible if authenticated and authorized */}
+        <Route
+          path="/dashboard"
+          element={
+            <AuthorizedRoute allowedRoles={["Doctor", "Pharmacist", "Admin", "User"]}>
+              <DashboardLayout />
+            </AuthorizedRoute>
+          }
+        >
           <Route index element={<Dashboard />} />
           <Route path="doctors" element={<Doctors />} />
           <Route path="pharmacists" element={<Pharmacists />} />
@@ -50,6 +59,7 @@ const App: React.FC = () => {
           <Route path="settings" element={<Settings />} />
         </Route>
 
+        {/* Catch-all: redirect unknown routes to login */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

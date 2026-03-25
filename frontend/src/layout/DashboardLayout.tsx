@@ -1,20 +1,21 @@
-import React, { useState } from "react";
-import Sidebar from "./Sidebar";
-import Topbar from "./Topbar";
+// src/layout/DashboardLayout.tsx
+import React from "react";
 import { Outlet } from "react-router-dom";
 
-export default function DashboardLayout() {
-  const [darkMode, setDarkMode] = useState(false);
-
+const DashboardLayout: React.FC = () => {
   return (
-    <div className={`${darkMode ? "dark" : ""} flex h-screen`}>
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Topbar darkMode={darkMode} toggleDarkMode={() => setDarkMode(!darkMode)} />
-        <main className="flex-1 p-6 overflow-y-auto">
-          <Outlet />
-        </main>
-      </div>
+    <div style={{ display: "flex", minHeight: "100vh" }}>
+      {/* You can add a sidebar here if needed */}
+      <aside style={{ width: "220px", backgroundColor: "#2563eb", color: "white", padding: "20px" }}>
+        <h2>Dashboard Sidebar</h2>
+        {/* Links/buttons for navigation */}
+      </aside>
+
+      <main style={{ flex: 1, padding: "20px" }}>
+        <Outlet /> {/* This is critical to render nested routes */}
+      </main>
     </div>
   );
-}
+};
+
+export default DashboardLayout;

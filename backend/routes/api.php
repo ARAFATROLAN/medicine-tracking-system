@@ -13,6 +13,10 @@ use App\Http\Controllers\ReportController;
 |--------------------------------------------------------------------------
 | API Routes - Version 1.0
 |--------------------------------------------------------------------------
+|
+| All routes for your Medicine Tracking System API.
+| v1 routes include public auth, protected resources, medicine monitoring, and reports.
+|
 */
 
 Route::prefix('v1')->group(function () {
@@ -23,7 +27,7 @@ Route::prefix('v1')->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    // Health check route
+    // Health check
     Route::get('/ping', function () {
         return response()->json([
             'status' => 'success',
@@ -32,7 +36,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // Authentication routes
-    Route::post('/register', [AuthController::class, 'register']); // already correct
+    Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
 
     /*
@@ -46,7 +50,7 @@ Route::prefix('v1')->group(function () {
         // Logout
         Route::post('/logout', [AuthController::class, 'logout']);
 
-        // Resources
+        // CRUD Resources
         Route::apiResource('doctors', DoctorController::class);
         Route::apiResource('patients', PatientController::class);
         Route::apiResource('medicines', MedicineController::class);

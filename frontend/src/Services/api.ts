@@ -1,17 +1,77 @@
 // src/services/api.ts
 
-const BASE_URL = "http://127.0.0.1:8000/api/v1";
+import axios from "axios";
 
-export const fetchDashboardStats = async () => {
-  const response = await fetch(`${BASE_URL}/dashboard`, {
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    },
+// Base API URL
+const baseURL: string = "http://localhost:8000/api/v1";
+
+// Create axios instance
+const api = axios.create({
+  baseURL: baseURL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Add token automatically
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+
+// API FUNCTIONS
+
+const fetchDashboardStats = async () => {
+  const response = await api.get("/dashboard");
+  return response.data;
+};
+
+
+// REGISTER USER
+const registerUser = async (
+  name: string,
+  email: string,
+  password: string,
+  contact: string,
+  specialisation: string
+) => {
+
+  const response = await api.post("/register", {
+    name,
+    email,
+    password,
+    contact,
+    specialisation
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch dashboard data");
-  }
+  return response.data;
+};
 
-  return response.json();
+
+// LOGIN USER
+const loginUser = async (email: string, password: string) => {
+
+  const response = await api.post("/login", {
+    email,
+    password
+  });
+
+  return response.data;
+};
+
+
+// EXPORT
+export default {
+  fetchDashboardStats,
+  registerUser,
+  loginUser,
 };

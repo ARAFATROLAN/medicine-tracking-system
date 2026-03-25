@@ -1,0 +1,78 @@
+[90m= [39m[
+    {#6086
+      +"[1mTables_in_medicine_tracking[22m": "[32mactivity_logs[39m",
+    },
+    {#6084
+      +"[1mTables_in_medicine_tracking[22m": "[32madministrators[39m",
+    },
+    {#6083
+      +"[1mTables_in_medicine_tracking[22m": "[32mcache[39m",
+    },
+    {#6088
+      +"[1mTables_in_medicine_tracking[22m": "[32mcache_locks[39m",
+    },
+    {#6071
+      +"[1mTables_in_medicine_tracking[22m": "[32mdeliveries[39m",
+    },
+    {#6089
+      +"[1mTables_in_medicine_tracking[22m": "[32mdoctors[39m",
+    },
+    {#6090
+      +"[1mTables_in_medicine_tracking[22m": "[32mfailed_jobs[39m",
+    },
+    {#6091
+      +"[1mTables_in_medicine_tracking[22m": "[32mhospitals[39m",
+    },
+    {#6092
+      +"[1mTables_in_medicine_tracking[22m": "[32mjob_batches[39m",
+    },
+    {#6093
+      +"[1mTables_in_medicine_tracking[22m": "[32mjobs[39m",
+    },
+    {#6094
+      +"[1mTables_in_medicine_tracking[22m": "[32mmedicine_inventory[39m",
+    },
+    {#6095
+      +"[1mTables_in_medicine_tracking[22m": "[32mmedicine_prescription[39m",
+    },
+    {#6096
+      +"[1mTables_in_medicine_tracking[22m": "[32mmedicines[39m",
+    },
+    {#6097
+      +"[1mTables_in_medicine_tracking[22m": "[32mmigrations[39m",
+    },
+    {#6098
+      +"[1mTables_in_medicine_tracking[22m": "[32mnotifications[39m",
+    },
+    {#6099
+      +"[1mTables_in_medicine_tracking[22m": "[32mpassword_reset_tokens[39m",
+    },
+    {#6100
+      +"[1mTables_in_medicine_tracking[22m": "[32mpatients[39m",
+    },
+    {#6101
+      +"[1mTables_in_medicine_tracking[22m": "[32mpersonal_access_tokens[39m",
+    },
+    {#6102
+      +"[1mTables_in_medicine_tracking[22m": "[32mpharmacists[39m",
+    },
+    {#6103
+      +"[1mTables_in_medicine_tracking[22m": "[32mprescription_medicine[39m",
+    },
+    {#6104
+      +"[1mTables_in_medicine_tracking[22m": "[32mprescriptions[39m",
+    },
+    {#6105
+      +"[1mTables_in_medicine_tracking[22m": "[32mroles[39m",
+    },
+    {#6106
+      +"[1mTables_in_medicine_tracking[22m": "[32msessions[39m",
+    },
+    {#6107
+      +"[1mTables_in_medicine_tracking[22m": "[32muser_roles[39m",
+    },
+    {#6108
+      +"[1mTables_in_medicine_tracking[22m": "[32musers[39m",
+    },
+  ]
+

@@ -26,10 +26,17 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'contact',
+        'specialisation'
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
+    ];
+
+    protected $attributes = [
+        'specialisation' => 'Doctor', // default in Laravel
+        'contact' => null,
     ];
 }
