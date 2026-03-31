@@ -28,13 +28,13 @@ const Login: React.FC = () => {
 
       switch (user.specialisation) {
         case "Doctor":
-          navigate("/dashboard/doctors");
+          navigate("/dashboard/doctor");
           break;
         case "Pharmacist":
-          navigate("/dashboard/pharmacists");
+          navigate("/dashboard/pharmacist");
           break;
         case "Admin":
-          navigate("/dashboard");
+          navigate("/dashboard/admin");
           break;
         default:
           navigate("/dashboard");
