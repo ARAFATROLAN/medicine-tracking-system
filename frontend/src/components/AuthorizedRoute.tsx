@@ -1,12 +1,12 @@
-import React from "react";
+import type { ReactNode, FC } from "react";
 import { Navigate } from "react-router-dom";
 
 interface Props {
   allowedRoles: string[];
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-const AuthorizedRoute: React.FC<Props> = ({ allowedRoles, children }) => {
+const AuthorizedRoute: FC<Props> = ({ allowedRoles, children }) => {
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
 

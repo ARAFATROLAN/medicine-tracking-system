@@ -1,11 +1,11 @@
-import React from "react";
+import type { ReactNode, FC } from "react";
 import { Navigate } from "react-router-dom";
 
 interface Props {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-const ProtectedRoute: React.FC<Props> = ({ children }) => {
+const ProtectedRoute: FC<Props> = ({ children }) => {
   const token = localStorage.getItem("token");
   if (!token) {
     return <Navigate to="/" replace />;

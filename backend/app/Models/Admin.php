@@ -6,5 +6,19 @@ use Illuminate\Database\Eloquent\Model;
 
 class Admin extends Model
 {
-    //
+
+    protected $table = 'administrators';
+
+    protected $fillable = [
+        'user_id',
+        'permissions'
+    ];
+
+    /**
+     * Relationship: Admin belongs to a User
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

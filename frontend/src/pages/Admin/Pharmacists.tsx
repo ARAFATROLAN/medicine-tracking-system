@@ -1,5 +1,3 @@
-import React from "react";
-
 export default function Doctors() {
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded p-6">

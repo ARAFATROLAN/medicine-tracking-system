@@ -23,15 +23,19 @@ class TestUsersSeeder extends Seeder
 
         // Create test users
         $users = [
-            ['name' => 'Admin User', 'email' => 'admin@example.com', 'role' => 'admin'],
-            ['name' => 'Doctor User', 'email' => 'doctor@example.com', 'role' => 'doctor'],
-            ['name' => 'Pharmacist User', 'email' => 'pharmacist@example.com', 'role' => 'pharmacist'],
+            ['name' => 'Admin User', 'email' => 'admin@example.com', 'role' => 'admin', 'specialisation' => 'Admin'],
+            ['name' => 'Doctor User', 'email' => 'doctor@example.com', 'role' => 'doctor', 'specialisation' => 'Doctor'],
+            ['name' => 'Pharmacist User', 'email' => 'pharmacist@example.com', 'role' => 'pharmacist', 'specialisation' => 'Pharmacist'],
         ];
 
         foreach ($users as $u) {
             $user = User::firstOrCreate(
                 ['email' => $u['email']],
-                ['name' => $u['name'], 'password' => Hash::make('password')]
+                [
+                    'name' => $u['name'],
+                    'password' => Hash::make('password'),
+                    'specialisation' => $u['specialisation']
+                ]
             );
 
             $role = Role::where('name', $u['role'])->first();

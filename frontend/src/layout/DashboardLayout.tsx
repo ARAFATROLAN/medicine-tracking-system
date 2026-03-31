@@ -1,8 +1,8 @@
 // src/layout/DashboardLayout.tsx
-import React from "react";
+import type { FC } from "react";
 import { Outlet } from "react-router-dom";
 
-const DashboardLayout: React.FC = () => {
+const DashboardLayout: FC = () => {
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
       {/* You can add a sidebar here if needed */}

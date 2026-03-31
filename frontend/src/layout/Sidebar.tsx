@@ -1,6 +1,5 @@
-import React from "react";
 import { Link } from "react-router-dom";
-import { FaChartLine, FaUserMd, FaUserInjured, FaPills, FaPrescriptionBottleAlt, FaTruck, FaCog } from "react-icons/fa";
+import { FaChartLine, FaUserMd, FaUserInjured, FaPrescriptionBottleAlt, FaTruck, FaCog } from "react-icons/fa";
 
 const links = [
   { name: "Dashboard", icon: <FaChartLine />, path: "/dashboard" },

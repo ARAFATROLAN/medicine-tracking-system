@@ -1,32 +1,58 @@
 // src/App.tsx
 
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 
 // Pages
 import Login from "./pages/login";
 import Register from "./pages/register";
-import Dashboard from "./pages/dashboard";
-import Doctors from "./pages/Admin/Doctors";
-import Pharmacists from "./pages/Admin/Pharmacists";
-import Patients from "./pages/Admin/Patients";
-import Users from "./pages/Admin/Users";
-import Settings from "./pages/Admin/Settings";
+import DoctorDashboard from "./pages/doctorDashboard";
+import PharmacistDashboard from "./pages/pharmacistDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 
 // Layouts
 import DashboardLayout from "./layout/DashboardLayout";
 
 // Route guards
-import AuthorizedRoute from "./components/AuthorizedRoute";
+import ProtectedRoute from "./components/ProtectedRoute";
 import PublicRoute from "./components/PublicRoute";
+
+// ✅ FIXED Dashboard Redirect (NO window.location)
+const DashboardRedirect: React.FC = () => {
+  const userRole = localStorage.getItem("role");
+
+  if (!userRole) {
+    return <Navigate to="/login" replace />;
+  }
+
+  switch (userRole.toLowerCase()) {
+    case "doctor":
+      return <Navigate to="/dashboard/doctor" replace />;
+    case "pharmacist":
+      return <Navigate to="/dashboard/pharmacist" replace />;
+    case "admin":
+      return <Navigate to="/dashboard/admin" replace />;
+    default:
+      return <Navigate to="/login" replace />;
+  }
+};
 
 const App: React.FC = () => {
   return (
     <Router>
       <Routes>
-        {/* Public routes */}
+
+        {/* ✅ Root redirect */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+
+        {/* ✅ Public routes */}
         <Route
-          path="/"
+          path="/login"
           element={
             <PublicRoute>
               <Login />
@@ -42,25 +68,27 @@ const App: React.FC = () => {
           }
         />
 
-        {/* Protected dashboard route - only accessible if authenticated and authorized */}
+        {/* ✅ Protected dashboard routes */}
         <Route
           path="/dashboard"
           element={
-            <AuthorizedRoute allowedRoles={["Doctor", "Pharmacist", "Admin", "User"]}>
+            <ProtectedRoute>
               <DashboardLayout />
-            </AuthorizedRoute>
+            </ProtectedRoute>
           }
         >
-          <Route index element={<Dashboard />} />
-          <Route path="doctors" element={<Doctors />} />
-          <Route path="pharmacists" element={<Pharmacists />} />
-          <Route path="patients" element={<Patients />} />
-          <Route path="users" element={<Users />} />
-          <Route path="settings" element={<Settings />} />
+          {/* Auto redirect based on role */}
+          <Route index element={<DashboardRedirect />} />
+
+          {/* Role dashboards */}
+          <Route path="doctor" element={<DoctorDashboard />} />
+          <Route path="pharmacist" element={<PharmacistDashboard />} />
+          <Route path="admin" element={<AdminDashboard />} />
         </Route>
 
-        {/* Catch-all: redirect unknown routes to login */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* ✅ Catch-all */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+
       </Routes>
     </Router>
   );
