@@ -14,6 +14,7 @@ const Register: React.FC = () => {
   const [specialisation, setSpecialisation] = useState("Doctor");
   const [showPassword, setShowPassword] = useState(false);
   const [registerError, setRegisterError] = useState("");
+  const [registering, setRegistering] = useState(false);
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -31,12 +32,19 @@ const Register: React.FC = () => {
       specialisation
     });
 
+    setRegistering(true);
     try {
 
       // FIX: send parameters correctly
-      await api.registerUser(name, email, password, contact, specialisation);
+      const response = await api.registerUser(name, email, password, contact, specialisation);
 
       setRegisterError("");
+      
+      // Store auth data
+      localStorage.setItem("token", response.access_token);
+      localStorage.setItem("role", response.user.specialisation);
+      localStorage.setItem("roles", JSON.stringify(response.user.roles || []));
+      localStorage.setItem("name", response.user.name);
 
       setName("");
       setEmail("");
@@ -67,6 +75,8 @@ const Register: React.FC = () => {
 
       }
 
+    } finally {
+      setRegistering(false);
     }
   };
 
@@ -165,8 +175,12 @@ const Register: React.FC = () => {
               </small>
             </div>
 
-            <button type="submit" style={styles.button}>
-              Register
+            <button 
+              type="submit" 
+              style={styles.button}
+              disabled={registering}
+            >
+              {registering ? "Registering..." : "Register"}
             </button>
 
           </form>

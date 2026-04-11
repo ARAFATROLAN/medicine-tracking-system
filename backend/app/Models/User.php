@@ -19,8 +19,25 @@ class User extends Authenticatable
 
 
     public function roles() {
-    return $this->belongsToMany(Role::class, 'user_roles');
-}
+        return $this->belongsToMany(Role::class, 'user_roles');
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return $this->roles()->pluck('name')
+            ->map(fn($name) => strtolower($name))
+            ->contains(strtolower($role));
+    }
+
+    public function hasAnyRole(array $roles): bool
+    {
+        $normalizedRoles = array_map('strtolower', $roles);
+
+        return $this->roles()->pluck('name')
+            ->map(fn($name) => strtolower($name))
+            ->intersect($normalizedRoles)
+            ->isNotEmpty();
+    }
 
     protected $fillable = [
         'name',

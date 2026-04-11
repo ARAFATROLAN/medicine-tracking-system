@@ -21,7 +21,7 @@ return [
 
     // Origins allowed to access API
     // During development, allow all; in production, replace '*' with your frontend domain
-    'allowed_origins' => ['*'],
+    'allowed_origins' => ['*', 'http://localhost:5174'],
 
     // Regex patterns for allowed origins (optional)
     'allowed_origins_patterns' => [],

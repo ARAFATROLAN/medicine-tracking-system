@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { authService } from "../Services/AuthService";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -17,7 +16,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   useEffect(() => {
     if (hasChecked) return; // Only validate once per mount
 
-    const validateUser = async () => {
+    const validateUser = () => {
       const token = localStorage.getItem("token");
       const userRole = localStorage.getItem("role");
 
@@ -28,35 +27,20 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return;
       }
 
-      try {
-        // ✅ Validate token with backend using AuthService
-        const user = await authService.getCurrentUser();
+      // ✅ Token exists and role exists - allow access
+      console.log("✅ User authenticated with role:", userRole);
 
-        if (!user) {
-          console.warn("getCurrentUser returned null/false");
-          throw new Error("Unauthorized");
-        }
+      // ✅ Role check
+      if (requiredRole) {
+        const hasAccess =
+          userRole.toLowerCase() === requiredRole.toLowerCase() ||
+          userRole.toLowerCase() === "admin";
 
-        console.log("✅ User authenticated:", user);
-
-        // ✅ Role check
-        if (requiredRole) {
-          const hasAccess =
-            userRole.toLowerCase() === requiredRole.toLowerCase() ||
-            userRole.toLowerCase() === "admin";
-
-          setIsValid(hasAccess);
-        } else {
-          setIsValid(true);
-        }
-      } catch (error: any) {
-        // ❌ Invalid token → clear session
-        console.error("Auth validation failed:", error.message);
-        localStorage.clear();
-        setIsValid(false);
-      } finally {
-        setHasChecked(true);
+        setIsValid(hasAccess);
+      } else {
+        setIsValid(true);
       }
+      setHasChecked(true);
     };
 
     validateUser();

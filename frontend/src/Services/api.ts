@@ -6,12 +6,18 @@ import axios from "axios";
 const baseURL: string = "http://localhost:8000/api/v1";
 
 // Create axios instance
-const api = axios.create({
+const axiosInstance = axios.create({
   baseURL: baseURL,
   headers: {
     "Content-Type": "application/json",
   },
 });
+
+// Alias for compatibility
+const api = axiosInstance;
+
+// Export for direct use if needed
+export { axiosInstance };
 
 // Add token automatically
 api.interceptors.request.use(
@@ -90,6 +96,11 @@ const updateMedicine = async (id: number, data: any) => {
   return response.data;
 };
 
+const registerMedicine = async (data: any) => {
+  const response = await api.post("/medicines/register", data);
+  return response.data;
+};
+
 // ============ DELIVERY MANAGEMENT ============
 
 const fetchDeliveries = async (page = 1, status?: string) => {
@@ -161,6 +172,58 @@ const fetchHospitals = async (page = 1) => {
   return response.data;
 };
 
+const createHospital = async (data: any) => {
+  const response = await api.post(`/dashboard/hospitals`, data);
+  return response.data;
+};
+
+const updateHospital = async (id: number, data: any) => {
+  const response = await api.put(`/dashboard/hospitals/${id}`, data);
+  return response.data;
+};
+
+const deleteHospital = async (id: number) => {
+  const response = await api.delete(`/dashboard/hospitals/${id}`);
+  return response.data;
+};
+
+const fetchDevices = async (hospitalId?: number, page = 1) => {
+  const query = hospitalId ? `?hospital_id=${hospitalId}&page=${page}` : `?page=${page}`;
+  const response = await api.get(`/dashboard/devices${query}`);
+  return response.data;
+};
+
+const createDevice = async (data: any) => {
+  const response = await api.post(`/dashboard/devices`, data);
+  return response.data;
+};
+
+const updateDevice = async (id: number, data: any) => {
+  const response = await api.put(`/dashboard/devices/${id}`, data);
+  return response.data;
+};
+
+const deleteDevice = async (id: number) => {
+  const response = await api.delete(`/dashboard/devices/${id}`);
+  return response.data;
+};
+
+const fetchHospitalDevices = async (hospitalId: number, page = 1) => {
+  return fetchDevices(hospitalId, page);
+};
+
+const createHospitalDevice = async (hospitalId: number, data: any) => {
+  return createDevice({ ...data, hospital_id: hospitalId });
+};
+
+const updateHospitalDevice = async (id: number, data: any) => {
+  return updateDevice(id, data);
+};
+
+const deleteHospitalDevice = async (id: number) => {
+  return deleteDevice(id);
+};
+
 // ============ PRESCRIPTION MANAGEMENT ============
 
 const fetchPrescriptions = async (page = 1) => {
@@ -215,10 +278,20 @@ const deletePatient = async (id: number) => {
   return response.data;
 };
 
-// ============ SETTINGS ============
+// ============ SEAL MANAGEMENT ============
 
-const fetchSettings = async () => {
-  const response = await api.get("/dashboard/settings");
+const getPrintableSeal = async (sealCode: string) => {
+  const response = await api.get(`/seals/${sealCode}/print`);
+  return response.data;
+};
+
+const getSealDetails = async (sealCode: string) => {
+  const response = await api.get(`/seals/${sealCode}`);
+  return response.data;
+};
+
+const verifySeal = async (sealCode: string) => {
+  const response = await api.post(`/seals/verify`, { seal_code: sealCode });
   return response.data;
 };
 
@@ -249,6 +322,11 @@ const loginUser = async (email: string, password: string) => {
   return response.data;
 };
 
+const updatePassword = async (data: any) => {
+  const response = await api.put('/dashboard/password', data);
+  return response.data;
+};
+
 // ============ EXPORT ============
 
 export default {
@@ -266,6 +344,7 @@ export default {
   fetchMedicines,
   getMedicine,
   updateMedicine,
+  registerMedicine,
   
   // Deliveries
   fetchDeliveries,
@@ -302,9 +381,27 @@ export default {
   
   // Hospitals
   fetchHospitals,
+  createHospital,
+  updateHospital,
+  deleteHospital,
+  fetchHospitalDevices,
+  createHospitalDevice,
+  updateHospitalDevice,
+  deleteHospitalDevice,
+  
+  // Branch Devices
+  fetchDevices,
+  createDevice,
+  updateDevice,
+  deleteDevice,
+  
+  // Seals
+  getPrintableSeal,
+  getSealDetails,
+  verifySeal,
   
   // Settings
-  fetchSettings,
+  updatePassword,
   
   // Auth
   registerUser,

@@ -10,7 +10,7 @@ class Prescription extends Model {
     protected $fillable = [
         'patient_id',
         'doctor_id',
-        'date',
+        'date_prescribed',
         'notes'
     ];
 

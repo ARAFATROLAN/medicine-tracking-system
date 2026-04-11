@@ -36,18 +36,21 @@ export const useAutoRefresh = <T,>(
       const result = await fetchFunction();
       
       if (isMountedRef.current) {
+        console.log("useAutoRefresh: Data fetched successfully", result);
         setData(result);
         setError(null);
       }
     } catch (err: any) {
       if (isMountedRef.current) {
         const errorMsg = err.message || "Failed to fetch data";
+        console.error("useAutoRefresh: Error occurred", errorMsg, err);
         setError(errorMsg);
         if (onError) onError(err);
       }
-      console.error("Auto-refresh error:", err);
+      console.error("useAutoRefresh error:", err);
     } finally {
       if (isMountedRef.current) {
+        console.log("useAutoRefresh: Setting loading to false");
         setLoading(false);
       }
     }

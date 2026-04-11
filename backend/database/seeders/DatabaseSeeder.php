@@ -34,5 +34,9 @@ class DatabaseSeeder extends Seeder
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        // Create additional test users for different roles
+        $this->call(TestUsersSeeder::class);
+        $this->call(SealCodeSeeder::class);
     }
 }

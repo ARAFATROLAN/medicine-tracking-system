@@ -1,6 +1,7 @@
 // src/pages/DoctorDashboard.tsx
 import React, { useState, useEffect } from "react";
 import { Line } from "react-chartjs-2";
+import AnimatedNumber from "../components/AnimatedNumber";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -13,7 +14,8 @@ import {
   Legend,
 } from "chart.js";
 import api from "../Services/api";
-import { useAutoRefresh } from "../hooks/useAutoRefresh";
+import PrescriptionForm from "../components/PrescriptionForm";
+import PatientRegistrationForm from "../components/PatientRegistrationForm";
 
 ChartJS.register(
   CategoryScale,
@@ -28,6 +30,7 @@ ChartJS.register(
 
 interface Prescription {
   id: number;
+  patient_id: number;
   patient_name: string;
   medicines: Array<{ name: string; quantity: number }>;
   created_at: string;
@@ -55,37 +58,72 @@ const DoctorDashboard: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, _setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isInitialFetch, setIsInitialFetch] = useState(true);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "create" | "register">("dashboard");
 
-  // Auto-refresh data every 30 seconds
-  const { data: dashboardData, loading: refreshing } = useAutoRefresh(
-    async () => {
-      try {
-        const [prescriptionsData, patientsData, medicinesData] = await Promise.all([
-          api.fetchPrescriptions(),
-          api.fetchPatients(),
-          api.fetchMedicines(),
-        ]);
-        return {
-          prescriptions: prescriptionsData.data || [],
-          patients: patientsData.data || [],
-          medicines: medicinesData.data || [],
-        };
-      } catch (err: any) {
-        throw new Error(err.response?.data?.message || "Failed to fetch data");
+  // Fetch function (handles both initial load and refresh)
+  const fetchDashboardData = React.useCallback(async (isInitial: boolean = false) => {
+    try {
+      console.log("DoctorDashboard: Fetching prescriptions, patients, medicines...");
+      
+      const [prescriptionsData, patientsData, medicinesData] = await Promise.all([
+        api.fetchPrescriptions(),
+        api.fetchPatients(),
+        api.fetchMedicines(),
+      ]);
+      
+      console.log("DoctorDashboard: Received data", {
+        prescriptionsData,
+        patientsData,
+        medicinesData,
+      });
+
+      // Extract data from responses
+      const prescs = prescriptionsData?.data || [];
+      const pats = patientsData?.data || [];
+      const meds = medicinesData?.data || [];
+
+      setPrescriptions(prescs);
+      setPatients(pats);
+      setMedicines(meds);
+      setError(null);
+      
+      // Only set loading to false on initial fetch
+      if (isInitial) {
+        setLoading(false);
+        setIsInitialFetch(false);
       }
-    },
-    { interval: 30000 } // 30 seconds
-  );
-
-  useEffect(() => {
-    if (dashboardData) {
-      setPrescriptions(dashboardData.prescriptions);
-      setPatients(dashboardData.patients);
-      setMedicines(dashboardData.medicines);
-      setLoading(false);
+    } catch (err: any) {
+      console.error("DoctorDashboard: Fetch error", err);
+      const errorMsg = err?.response?.data?.message || err?.message || "Failed to fetch data";
+      setError(errorMsg);
+      
+      // Only set loading to false on initial fetch
+      if (isInitial) {
+        setLoading(false);
+        setIsInitialFetch(false);
+      }
+    } finally {
+      // Silent refresh, no state changes needed
     }
-  }, [dashboardData]);
+  }, []);
+
+  // Initial fetch on mount
+  useEffect(() => {
+    fetchDashboardData(true);
+  }, [fetchDashboardData]);
+
+  // Auto-refresh every 30 seconds (after initial fetch completes)
+  useEffect(() => {
+    if (isInitialFetch) return; // Don't start interval until initial fetch is done
+    
+    const interval = setInterval(() => {
+      fetchDashboardData(false); // false = not initial fetch, so it won't touch loading state
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [isInitialFetch, fetchDashboardData]);
 
   // Calculate stats
   const totalPrescriptions = prescriptions.length;
@@ -128,29 +166,61 @@ const DoctorDashboard: React.FC = () => {
       <div style={styles.banner}>
         <h1>👨‍⚕️ Doctor Dashboard</h1>
         <p>Welcome Dr. {name}</p>
-        {refreshing && <small style={{ color: "#666", marginLeft: "10px" }}>Refreshing...</small>}
       </div>
 
-      {/* Stats Cards */}
+      {/* Tab Navigation */}
+      <div style={styles.tabContainer}>
+        <button
+          style={{
+            ...styles.tabButton,
+            ...(activeTab === "dashboard" ? styles.tabButtonActive : styles.tabButtonInactive),
+          }}
+          onClick={() => setActiveTab("dashboard")}
+        >
+          📊 Dashboard
+        </button>
+        <button
+          style={{
+            ...styles.tabButton,
+            ...(activeTab === "create" ? styles.tabButtonActive : styles.tabButtonInactive),
+          }}
+          onClick={() => setActiveTab("create")}
+        >
+          ➕ Create Prescription
+        </button>
+        <button
+          style={{
+            ...styles.tabButton,
+            ...(activeTab === "register" ? styles.tabButtonActive : styles.tabButtonInactive),
+          }}
+          onClick={() => setActiveTab("register")}
+        >
+          👤 Register Patient
+        </button>
+      </div>
+
+      {/* Dashboard Tab */}
+      {activeTab === "dashboard" && (
+        <>
       <div style={styles.cards}>
         <div style={styles.card}>
           <h3>👥 Total Patients</h3>
-          <p style={styles.cardValue}>{totalPatients}</p>
+          <p style={styles.cardValue}><AnimatedNumber value={totalPatients} /></p>
         </div>
 
         <div style={styles.card}>
           <h3>📋 Total Prescriptions</h3>
-          <p style={styles.cardValue}>{totalPrescriptions}</p>
+          <p style={styles.cardValue}><AnimatedNumber value={totalPrescriptions} /></p>
         </div>
 
         <div style={styles.card}>
           <h3>💊 Low Stock Medicines</h3>
-          <p style={styles.cardValue}>{lowStockMedicines}</p>
+          <p style={styles.cardValue}><AnimatedNumber value={lowStockMedicines} /></p>
         </div>
 
         <div style={styles.card}>
           <h3>📅 Recent Activity</h3>
-          <p style={styles.cardValue}>{recentPrescriptions.length} prescriptions this week</p>
+          <p style={styles.cardValue}><AnimatedNumber value={recentPrescriptions.length} /> prescriptions this week</p>
         </div>
       </div>
 
@@ -161,7 +231,8 @@ const DoctorDashboard: React.FC = () => {
           <table style={styles.table}>
             <thead>
               <tr>
-                <th>Patient</th>
+                <th>Patient ID</th>
+                <th>Patient Name</th>
                 <th>Medicines</th>
                 <th>Date</th>
                 <th>Status</th>
@@ -170,6 +241,9 @@ const DoctorDashboard: React.FC = () => {
             <tbody>
               {recentPrescriptions.map((prescription) => (
                 <tr key={prescription.id}>
+                  <td>
+                    <strong>#{prescription.patient_id}</strong>
+                  </td>
                   <td>{prescription.patient_name}</td>
                   <td>
                     {prescription.medicines?.map((med, idx) => (
@@ -256,6 +330,36 @@ const DoctorDashboard: React.FC = () => {
           />
         </div>
       </div>
+        </>
+      )}
+
+      {/* Create Prescription Tab */}
+      {activeTab === "create" && (
+        <PrescriptionForm
+          patients={patients}
+          medicines={medicines}
+          onSuccess={() => {
+            // Refresh data and switch back to dashboard
+            fetchDashboardData(false);
+            setTimeout(() => setActiveTab("dashboard"), 2000);
+          }}
+          onClose={() => setActiveTab("dashboard")}
+          onCreatePatient={() => setActiveTab("register")}
+        />
+      )}
+
+      {/* Register Patient Tab */}
+      {activeTab === "register" && (
+        <PatientRegistrationForm
+          onSuccess={() => {
+            // Refresh patients list after registration
+            fetchDashboardData(false);
+            setTimeout(() => setActiveTab("create"), 2000);
+          }}
+          onClose={() => setActiveTab("create")}
+        />
+      )}
+
     </div>
   );
 };
@@ -266,16 +370,42 @@ const styles: { [key: string]: React.CSSProperties } = {
   container: {
     fontFamily: "Arial, sans-serif",
     padding: 40,
-    background: "linear-gradient(135deg, #f0f4f8, #d0e7ff)",
+    background: "#f5f7fa",
     minHeight: "100vh",
   },
   banner: {
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    background: "linear-gradient(135deg, #2563eb 0%, #1e40af 100%)",
     color: "white",
     padding: "30px",
     borderRadius: "15px",
     marginBottom: "30px",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+    boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)",
+  },
+  tabContainer: {
+    display: "flex",
+    gap: "10px",
+    marginBottom: "30px",
+    borderBottom: "2px solid #e2e8f0",
+    flexWrap: "wrap",
+  },
+  tabButton: {
+    padding: "12px 24px",
+    fontSize: "1rem",
+    border: "none",
+    cursor: "pointer",
+    borderRadius: "8px 8px 0 0",
+    transition: "all 0.3s",
+    fontWeight: "600",
+  },
+  tabButtonActive: {
+    background: "linear-gradient(135deg, #2563eb 0%, #1e40af 100%)",
+    color: "white",
+    boxShadow: "0 2px 8px rgba(37, 99, 235, 0.2)",
+  },
+  tabButtonInactive: {
+    background: "#ffffff",
+    color: "#64748b",
+    border: "1px solid #e2e8f0",
   },
   cards: {
     display: "grid",
@@ -284,12 +414,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "30px",
   },
   card: {
-    background: "white",
+    background: "#ffffff",
     padding: "25px",
     borderRadius: "12px",
-    boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
     textAlign: "center",
     transition: "transform 0.2s",
+    color: "#1e293b",
+    border: "1px solid #e2e8f0",
   },
   cardValue: {
     fontSize: "2rem",
@@ -298,11 +430,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: "10px 0",
   },
   section: {
-    background: "white",
+    background: "#ffffff",
     padding: "25px",
     borderRadius: "12px",
-    boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
     marginBottom: "30px",
+    color: "#1e293b",
+    border: "1px solid #e2e8f0",
   },
   tableContainer: {
     overflowX: "auto",
@@ -324,11 +458,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "15px",
   },
   alertCard: {
-    background: "#fff3cd",
-    border: "1px solid #ffeaa7",
+    background: "#fffbeb",
+    border: "1px solid #fde68a",
     borderRadius: "8px",
     padding: "15px",
-    color: "#856404",
+    color: "#92400e",
   },
   chartContainer: {
     background: "white",

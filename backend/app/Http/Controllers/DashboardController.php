@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Medicine;
+use App\Models\SealCode;
 use App\Models\Prescription;
 use App\Models\Patient;
 use App\Models\Doctor;
@@ -14,8 +15,12 @@ use App\Models\ActivityLog;
 use App\Models\MedicineInventory;
 use App\Models\Delivery;
 use App\Models\Hospital;
+use App\Models\BranchDevice;
+use App\Services\QRCodeService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -37,8 +42,8 @@ class DashboardController extends Controller
 
             // Get low stock and expired medicines
             $low_stock_medicines = MedicineInventory::where('quantity', '<', 10)->count();
-            $expired_medicines = Medicine::whereNotNull('expiry_date')
-                ->where('expiry_date', '<', now())->count();
+            $expired_medicines = Medicine::whereNotNull('Expiry_Date')
+                ->where('Expiry_Date', '<', now())->count();
 
             // Get deliveries and prescriptions
             $pending_deliveries = Delivery::where('status', 'pending')->count();
@@ -101,27 +106,41 @@ class DashboardController extends Controller
     }
 
     /**
-     * Update user details (admin only)
+     * Update user password (authenticated user only)
      */
-    public function updateUser(Request $request, User $user)
+    public function updatePassword(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'string|max:255',
-            'email' => 'email|unique:users,email,' . $user->id,
-            'contact' => 'string|nullable',
-            'specialisation' => 'string|nullable',
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
-        $user->update($validated);
+        $user = auth()->user();
+
+        // Verify current password
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Current password is incorrect'
+            ], 400);
+        }
+
+        // Update password
+        $user->update([
+            'password' => Hash::make($validated['password'])
+        ]);
 
         ActivityLog::create([
-            'user_id' => auth()->id(),
-            'action' => 'Updated user: ' . $user->name,
+            'user_id' => $user->id,
+            'action' => 'Password changed',
             'entity_type' => 'User',
             'entity_id' => $user->id,
         ]);
 
-        return response()->json(['message' => 'User updated successfully', 'data' => $user]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Password updated successfully'
+        ]);
     }
 
     /**
@@ -147,16 +166,65 @@ class DashboardController extends Controller
      */
     public function medicines()
     {
-        $medicines = Medicine::with(['inventories'])
-            ->select('id', 'name', 'description', 'expiry_date', 'created_at')
-            ->paginate(20);
+        try {
+            // Fetch medicines with their inventories
+            $medicines = Medicine::with(['inventories'])
+                ->select('id', 'Name as name', 'Description as description', 'Expiry_Date as expiry_date', 'Quantity_in_Stock', 'Seal_Code as seal_code', 'created_at')
+                ->paginate(20);
 
-        $medicines->getCollection()->transform(function ($medicine) {
-            $medicine->stock_status = $this->getStockStatus($medicine);
-            return $medicine;
-        });
+            $medicines->getCollection()->transform(function ($medicine) {
+                $medicine->stock_status = $this->getStockStatus($medicine);
+                // Add quantity field for frontend compatibility
+                $medicine->quantity = $medicine->Quantity_in_Stock;
 
-        return response()->json($medicines);
+                // Try to load seal code data if it exists in the database
+                try {
+                    if ($medicine->seal_code) {
+                        // Query for seal code by code value
+                        $sealCode = SealCode::where('code', $medicine->seal_code)->first();
+                        if ($sealCode) {
+                            $qrCodeUrl = null;
+                            try {
+                                $qrCode = app(QRCodeService::class)->generateQRCode($sealCode);
+                                $qrCodeUrl = $qrCode['qr_code_url'] ?? null;
+                            } catch (\Exception $e) {
+                                \Log::debug('Could not generate QR code URL for seal code: ' . $e->getMessage());
+                            }
+
+                            $medicine->seal_code_data = [
+                                'id' => $sealCode->id,
+                                'code' => $sealCode->code,
+                                'qr_code_url' => $qrCodeUrl,
+                                'is_used' => $sealCode->is_used ?? false,
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::debug('Could not load seal code data: ' . $e->getMessage());
+                }
+
+                return $medicine;
+            });
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Medicines retrieved successfully',
+                'data' => $medicines->getCollection()->toArray(),
+                'pagination' => [
+                    'total' => $medicines->total(),
+                    'per_page' => $medicines->perPage(),
+                    'current_page' => $medicines->currentPage(),
+                    'last_page' => $medicines->lastPage(),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Medicines retrieval error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch medicines',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
     }
 
     /**
@@ -195,50 +263,142 @@ class DashboardController extends Controller
      */
     public function deliveries(Request $request)
     {
-        $query = Delivery::with(['prescription', 'pharmacy'])
-            ->select('id', 'prescription_id', 'pharmacy_id', 'status', 'created_at');
+        try {
+            $query = Delivery::select('id', 'prescription_ID', 'Delivered_By', 'Delivery_Date', 'Status', 'created_at');
 
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
+            // Filter by status if provided
+            if ($request->has('status')) {
+                $query->where('Status', $request->status);
+            }
+
+            $deliveries = $query->paginate(20);
+
+            // Transform the data to match API response format
+            $deliveriesData = collect($deliveries->items())->map(function($delivery) {
+                return [
+                    'id' => $delivery->id,
+                    'prescription_ID' => $delivery->prescription_ID,
+                    'Delivered_By' => $delivery->Delivered_By,
+                    'Delivery_Date' => $delivery->Delivery_Date,
+                    'status' => $delivery->Status,
+                    'delivery_date' => $delivery->Delivery_Date,
+                    'created_at' => $delivery->created_at?->format('Y-m-d H:i') ?? 'N/A',
+                ];
+            })->toArray();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Deliveries retrieved successfully',
+                'data' => $deliveriesData,
+                'pagination' => [
+                    'total' => $deliveries->total(),
+                    'per_page' => $deliveries->perPage(),
+                    'current_page' => $deliveries->currentPage(),
+                    'last_page' => $deliveries->lastPage(),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Deliveries retrieval error: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch deliveries',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
         }
-
-        $deliveries = $query->paginate(20);
-        return response()->json($deliveries);
     }
 
     /**
      * Get delivery details
      */
-    public function getDelivery(Delivery $delivery)
+    public function getDelivery($id)
     {
-        $delivery->load(['prescription', 'pharmacy']);
-        return response()->json($delivery);
+        try {
+            $delivery = Delivery::find($id);
+
+            if (!$delivery) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Delivery not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Delivery retrieved successfully',
+                'data' => [
+                    'id' => $delivery->id,
+                    'prescription_ID' => $delivery->prescription_ID,
+                    'Delivered_By' => $delivery->Delivered_By,
+                    'Delivery_Date' => $delivery->Delivery_Date,
+                    'status' => $delivery->Status,
+                    'delivery_date' => $delivery->Delivery_Date,
+                    'created_at' => $delivery->created_at?->format('Y-m-d H:i') ?? 'N/A',
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Get delivery error: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch delivery',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
     }
 
     /**
      * Update delivery status (approve/reject/complete)
      */
-    public function updateDeliveryStatus(Request $request, Delivery $delivery)
+    public function updateDeliveryStatus(Request $request, $id)
     {
-        $validated = $request->validate([
-            'status' => 'required|in:pending,approved,rejected,completed',
-            'notes' => 'string|nullable',
-        ]);
+        try {
+            $delivery = Delivery::find($id);
 
-        $oldStatus = $delivery->status;
-        $delivery->update($validated);
+            if (!$delivery) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Delivery not found'
+                ], 404);
+            }
 
-        ActivityLog::create([
-            'user_id' => auth()->id(),
-            'action' => "Changed delivery {$delivery->id} status from {$oldStatus} to {$validated['status']}",
-            'entity_type' => 'Delivery',
-            'entity_id' => $delivery->id,
-        ]);
+            $validated = $request->validate([
+                'status' => 'required|string|in:pending,approved,rejected,delivered,cancelled',
+                'notes' => 'string|nullable',
+            ]);
 
-        return response()->json([
-            'message' => 'Delivery status updated successfully',
-            'data' => $delivery
-        ]);
+            $oldStatus = $delivery->Status;
+            // Map lowercase status to uppercase Status column
+            $delivery->update([
+                'Status' => $validated['status'],
+                'notes' => $validated['notes'] ?? null,
+            ]);
+
+            ActivityLog::create([
+                'user_id' => auth()->id(),
+                'action' => "Changed delivery {$delivery->id} status from {$oldStatus} to {$validated['status']}",
+                'entity_type' => 'Delivery',
+                'entity_id' => $delivery->id,
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Delivery status updated successfully',
+                'data' => [
+                    'id' => $delivery->id,
+                    'prescription_ID' => $delivery->prescription_ID,
+                    'Delivered_By' => $delivery->Delivered_By,
+                    'Delivery_Date' => $delivery->Delivery_Date,
+                    'status' => $delivery->Status,
+                    'created_at' => $delivery->created_at?->format('Y-m-d H:i') ?? 'N/A',
+                ]
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Update delivery status error: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to update delivery status',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
     }
 
     /**
@@ -395,11 +555,252 @@ class DashboardController extends Controller
      */
     public function hospitals()
     {
-        $hospitals = Hospital::select('id', 'name', 'location', 'phone', 'created_at')
+        $hospitals = Hospital::select('id', 'name', 'address', 'phone', 'created_at')
             ->withCount('doctors', 'patients')
             ->paginate(20);
 
         return response()->json($hospitals);
+    }
+
+    /**
+     * Create a new hospital record
+     */
+    public function createHospital(Request $request)
+    {
+        $currentUser = Auth::user();
+        if (!$currentUser instanceof \App\Models\User ||
+            (!$currentUser->hasAnyRole(['admin', 'super_admin']) &&
+             strtolower($currentUser->specialisation) !== 'admin')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:hospitals,email',
+            'phone' => 'required|string|max:50',
+            'address' => 'required|string|max:500',
+        ]);
+
+        $hospital = Hospital::create($validated);
+
+        ActivityLog::create([
+            'user_id' => $currentUser->id,
+            'action' => 'Created hospital: ' . $hospital->name,
+            'entity_type' => 'Hospital',
+            'entity_id' => $hospital->id,
+        ]);
+
+        return response()->json(['message' => 'Hospital registered successfully', 'data' => $hospital], 201);
+    }
+
+    /**
+     * Update hospital information
+     */
+    public function updateHospital(Request $request, Hospital $hospital)
+    {
+        $currentUser = Auth::user();
+        if (!$currentUser instanceof \App\Models\User ||
+            (!$currentUser->hasAnyRole(['admin', 'super_admin']) &&
+             strtolower($currentUser->specialisation) !== 'admin')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'sometimes|required|string|max:255',
+            'email' => 'sometimes|required|email|unique:hospitals,email,' . $hospital->id,
+            'phone' => 'sometimes|required|string|max:50',
+            'address' => 'sometimes|required|string|max:500',
+        ]);
+
+        $hospital->update($validated);
+
+        ActivityLog::create([
+            'user_id' => $currentUser->id,
+            'action' => 'Updated hospital: ' . $hospital->name,
+            'entity_type' => 'Hospital',
+            'entity_id' => $hospital->id,
+        ]);
+
+        return response()->json(['message' => 'Hospital updated successfully', 'data' => $hospital]);
+    }
+
+    /**
+     * Delete a hospital record
+     */
+    public function deleteHospital(Hospital $hospital)
+    {
+        $currentUser = Auth::user();
+        if (!$currentUser instanceof \App\Models\User ||
+            (!$currentUser->hasAnyRole(['admin', 'super_admin']) &&
+             strtolower($currentUser->specialisation) !== 'admin')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $name = $hospital->name;
+        $hospital->delete();
+
+        ActivityLog::create([
+            'user_id' => $currentUser->id,
+            'action' => 'Deleted hospital: ' . $name,
+            'entity_type' => 'Hospital',
+            'entity_id' => $hospital->id,
+        ]);
+
+        return response()->json(['message' => 'Hospital deleted successfully']);
+    }
+
+    /**
+     * List registered branch devices for all hospitals or a specific hospital.
+     */
+    public function devices(Request $request)
+    {
+        $currentUser = Auth::user();
+        if (!$currentUser instanceof \App\Models\User || !$currentUser->hasAnyRole(['admin', 'super_admin'])) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $query = BranchDevice::with('hospital:id,name')
+            ->select('id', 'hospital_id', 'name', 'identifier', 'location', 'is_active', 'created_at');
+
+        if ($request->filled('hospital_id')) {
+            $query->where('hospital_id', $request->hospital_id);
+        }
+
+        $devices = $query->paginate(20);
+
+        return response()->json($devices);
+    }
+
+    /**
+     * Register a new branch scanning device.
+     */
+    public function createDevice(Request $request)
+    {
+        $currentUser = Auth::user();
+        if (!$currentUser instanceof \App\Models\User ||
+            (!$currentUser->hasAnyRole(['admin', 'super_admin']) &&
+             strtolower($currentUser->specialisation) !== 'admin')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'hospital_id' => 'nullable|exists:hospitals,id',
+            'name' => 'required|string|max:255',
+            'identifier' => 'required|string|max:255|unique:branch_devices,identifier',
+            'location' => 'nullable|string|max:255',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $device = BranchDevice::create([
+            'hospital_id' => $validated['hospital_id'] ?? null,
+            'name' => $validated['name'],
+            'identifier' => $validated['identifier'],
+            'location' => $validated['location'] ?? null,
+            'token' => Str::random(40),
+            'is_active' => $validated['is_active'] ?? true,
+            'registered_by' => $currentUser->id,
+        ]);
+
+        ActivityLog::create([
+            'user_id' => $currentUser->id,
+            'action' => 'Registered branch device: ' . $device->identifier . ($device->hospital ? ' for hospital: ' . $device->hospital->name : ' as standalone device'),
+            'entity_type' => 'BranchDevice',
+            'entity_id' => $device->id,
+        ]);
+
+        return response()->json(['message' => 'Branch device registered successfully', 'data' => $device], 201);
+    }
+
+    /**
+     * List registered branch devices for a hospital
+     */
+    public function hospitalDevices(Hospital $hospital)
+    {
+        $request = request();
+        $request->merge(['hospital_id' => $hospital->id]);
+        return $this->devices($request);
+    }
+
+    /**
+     * Register a new branch scanning device for a hospital
+     */
+    public function registerHospitalDevice(Request $request, Hospital $hospital)
+    {
+        $request->merge(['hospital_id' => $hospital->id]);
+        return $this->createDevice($request);
+    }
+
+    /**
+     * Update branch device registration
+     */
+    public function updateDevice(Request $request, BranchDevice $device)
+    {
+        $currentUser = Auth::user();
+        if (!$currentUser instanceof \App\Models\User ||
+            (!$currentUser->hasAnyRole(['admin', 'super_admin']) &&
+             strtolower($currentUser->specialisation) !== 'admin')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'hospital_id' => 'nullable|exists:hospitals,id',
+            'name' => 'sometimes|required|string|max:255',
+            'identifier' => 'sometimes|required|string|max:255|unique:branch_devices,identifier,' . $device->id,
+            'location' => 'sometimes|nullable|string|max:255',
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        $device->update($validated);
+
+        ActivityLog::create([
+            'user_id' => $currentUser->id,
+            'action' => 'Updated branch device: ' . $device->identifier,
+            'entity_type' => 'BranchDevice',
+            'entity_id' => $device->id,
+        ]);
+
+        return response()->json(['message' => 'Branch device updated successfully', 'data' => $device]);
+    }
+
+    /**
+     * Update branch device registration
+     */
+    public function updateHospitalDevice(Request $request, BranchDevice $device)
+    {
+        return $this->updateDevice($request, $device);
+    }
+
+    /**
+     * Remove a branch device registration
+     */
+    public function deleteDevice(BranchDevice $device)
+    {
+        $currentUser = Auth::user();
+        if (!$currentUser instanceof \App\Models\User ||
+            (!$currentUser->hasAnyRole(['admin', 'super_admin']) &&
+             strtolower($currentUser->specialisation) !== 'admin')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $identifier = $device->identifier;
+        $device->delete();
+
+        ActivityLog::create([
+            'user_id' => $currentUser->id,
+            'action' => 'Deleted branch device: ' . $identifier,
+            'entity_type' => 'BranchDevice',
+            'entity_id' => $device->id,
+        ]);
+
+        return response()->json(['message' => 'Branch device deleted successfully']);
+    }
+
+    /**
+     * Remove a branch device registration
+     */
+    public function deleteHospitalDevice(BranchDevice $device)
+    {
+        return $this->deleteDevice($device);
     }
 
     /**

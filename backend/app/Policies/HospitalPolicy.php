@@ -2,43 +2,34 @@
 
 namespace App\Policies;
 
-use App\Models\Hospita;
-use App\Models\User;
-use Illuminate\Auth\Access\Response;
-
-
-
-    /**
-     * Determine whether the user can view any models.
-     */
-    
-
-namespace App\Policies;
-
-use App\Models\User;
 use App\Models\Hospital;
+use App\Models\User;
 
 class HospitalPolicy
 {
-    public function create(User $user)
+    public function viewAny(User $user)
     {
-        return $user->hasRole('super_admin');
-    }
-
-    public function update(User $user, Hospital $hospital)
-    {
-        return $user->hasRole('super_admin');
-    }
-
-    public function delete(User $user, Hospital $hospital)
-    {
-        return $user->hasRole('super_admin');
+        return $user->hasAnyRole(['admin', 'super_admin']);
     }
 
     public function view(User $user, Hospital $hospital)
     {
-        return $user->hospital_id === $hospital->id
-               || $user->hasRole('super_admin');
+        return $user->hasAnyRole(['admin', 'super_admin']);
+    }
+
+    public function create(User $user)
+    {
+        return $user->hasAnyRole(['admin', 'super_admin']);
+    }
+
+    public function update(User $user, Hospital $hospital)
+    {
+        return $user->hasAnyRole(['admin', 'super_admin']);
+    }
+
+    public function delete(User $user, Hospital $hospital)
+    {
+        return $user->hasAnyRole(['admin', 'super_admin']);
     }
 }
 

@@ -24,6 +24,7 @@ const Login: React.FC = () => {
 
       localStorage.setItem("token", token);
       localStorage.setItem("role", user.specialisation);
+      localStorage.setItem("roles", JSON.stringify(user.roles || []));
       localStorage.setItem("name", user.name);
 
       switch (user.specialisation) {

@@ -43,6 +43,16 @@ export default defineConfig([
 ])
 ```
 
+## Environment variables
+
+To enable Google Maps in the admin vehicle tracking page, create a `frontend/.env` file from `frontend/.env.example` and set your actual API key:
+
+```env
+VITE_GOOGLE_MAPS_API_KEY=your_real_google_maps_api_key
+```
+
+Then restart the frontend dev server so Vite can load the new environment variable.
+
 You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
 ```js

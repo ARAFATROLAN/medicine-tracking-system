@@ -1,6 +1,7 @@
 // src/pages/PharmacistDashboard.tsx
 import React, { useState, useEffect } from "react";
 import { Bar } from "react-chartjs-2";
+import AnimatedNumber from "../components/AnimatedNumber";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,7 +12,7 @@ import {
   Legend,
 } from "chart.js";
 import api from "../Services/api";
-import { useAutoRefresh } from "../hooks/useAutoRefresh";
+import MedicineRegistrationForm from "../components/MedicineRegistrationForm";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -36,43 +37,78 @@ const PharmacistDashboard: React.FC = () => {
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, _setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isInitialFetch, setIsInitialFetch] = useState(true);
+  const [activeTab, setActiveTab] = useState<"inventory" | "register" | "deliveries">("inventory");
+  const [approvalStatus, setApprovalStatus] = useState<{ [key: number]: string }>({});
 
-  // Auto-refresh data every 30 seconds
-  const { data: dashboardData, loading: refreshing } = useAutoRefresh(
-    async () => {
-      try {
-        const [medicinesData, deliveriesData] = await Promise.all([
-          api.fetchMedicines(),
-          api.fetchDeliveries(),
-        ]);
-        return {
-          medicines: medicinesData.data || [],
-          deliveries: deliveriesData.data || [],
-        };
-      } catch (err: any) {
-        throw new Error(err.response?.data?.message || "Failed to fetch data");
+  // Fetch function (handles both initial load and refresh)
+  const fetchDashboardData = React.useCallback(async (isInitial: boolean = false) => {
+    try {
+      console.log("PharmacistDashboard: Fetching medicines and deliveries...");
+      
+      const [medicinesData, deliveriesData] = await Promise.all([
+        api.fetchMedicines(),
+        api.fetchDeliveries(),
+      ]);
+      
+      console.log("PharmacistDashboard: Received data", {
+        medicinesData,
+        deliveriesData,
+      });
+
+      // Extract data from responses
+      const meds = medicinesData?.data || [];
+      const dels = deliveriesData?.data || [];
+
+      setMedicines(meds);
+      setDeliveries(dels);
+      setError(null);
+      
+      // Only set loading to false on initial fetch
+      if (isInitial) {
+        setLoading(false);
+        setIsInitialFetch(false);
       }
-    },
-    { interval: 30000 } // 30 seconds
-  );
-
-  useEffect(() => {
-    if (dashboardData) {
-      setMedicines(dashboardData.medicines);
-      setDeliveries(dashboardData.deliveries);
-      setLoading(false);
+    } catch (err: any) {
+      console.error("PharmacistDashboard: Fetch error", err);
+      const errorMsg = err?.response?.data?.message || err?.message || "Failed to fetch data";
+      setError(errorMsg);
+      
+      // Only set loading to false on initial fetch
+      if (isInitial) {
+        setLoading(false);
+        setIsInitialFetch(false);
+      }
+    } finally {
+      // Silent refresh, no state changes needed
     }
-  }, [dashboardData]);
+  }, []);
+
+  // Initial fetch on mount
+  useEffect(() => {
+    fetchDashboardData(true);
+  }, [fetchDashboardData]);
+
+  // Auto-refresh every 30 seconds (after initial fetch completes)
+  useEffect(() => {
+    if (isInitialFetch) return; // Don't start interval until initial fetch is done
+    
+    const interval = setInterval(() => {
+      fetchDashboardData(false); // false = not initial fetch, so it won't touch loading state
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [isInitialFetch, fetchDashboardData]);
 
   // Calculate stats
   const totalMedicines = medicines.length;
-  const lowStockMedicines = medicines.filter(med => med.quantity < 10).length;
+  const lowStockMedicines = medicines.filter(med => med.quantity < 50).length;
   const expiringSoonMedicines = medicines.filter(med => {
     const expiryDate = new Date(med.expiry_date);
     const now = new Date();
     const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+    return daysUntilExpiry <= 7 && daysUntilExpiry > 0;
   }).length;
   const pendingDeliveries = deliveries.filter(del => del.status === 'pending').length;
 
@@ -88,6 +124,37 @@ const PharmacistDashboard: React.FC = () => {
         ),
       },
     ],
+  };
+
+  // Handler functions
+  const handleApproveDelivery = async (deliveryId: number) => {
+    setApprovalStatus(prev => ({ ...prev, [deliveryId]: "pending" }));
+    try {
+      await api.updateDeliveryStatus(deliveryId, "approved");
+      await fetchDashboardData(false);
+      setApprovalStatus(prev => ({ ...prev, [deliveryId]: "done" }));
+    } catch (err) {
+      console.error("Error approving delivery:", err);
+      const newStatus = { ...approvalStatus };
+      delete newStatus[deliveryId];
+      setApprovalStatus(newStatus);
+      alert("Failed to approve delivery");
+    }
+  };
+
+  const handleRejectDelivery = async (deliveryId: number) => {
+    setApprovalStatus(prev => ({ ...prev, [deliveryId]: "pending" }));
+    try {
+      await api.updateDeliveryStatus(deliveryId, "rejected");
+      await fetchDashboardData(false);
+      setApprovalStatus(prev => ({ ...prev, [deliveryId]: "done" }));
+    } catch (err) {
+      console.error("Error rejecting delivery:", err);
+      const newStatus = { ...approvalStatus };
+      delete newStatus[deliveryId];
+      setApprovalStatus(newStatus);
+      alert("Failed to reject delivery");
+    }
   };
 
   if (loading) {
@@ -112,29 +179,62 @@ const PharmacistDashboard: React.FC = () => {
       <div style={styles.banner}>
         <h1>💊 Pharmacist Dashboard</h1>
         <p>Welcome {name}</p>
-        {refreshing && <small style={{ color: "#666", marginLeft: "10px" }}>Refreshing...</small>}
       </div>
 
-      {/* Stats Cards */}
-      <div style={styles.cards}>
+      {/* Tab Navigation */}
+      <div style={styles.tabContainer}>
+        <button
+          style={{
+            ...styles.tabButton,
+            ...(activeTab === "inventory" ? styles.tabButtonActive : styles.tabButtonInactive),
+          }}
+          onClick={() => setActiveTab("inventory")}
+        >
+          📦 View Inventory
+        </button>
+        <button
+          style={{
+            ...styles.tabButton,
+            ...(activeTab === "register" ? styles.tabButtonActive : styles.tabButtonInactive),
+          }}
+          onClick={() => setActiveTab("register")}
+        >
+          ➕ Register Medicine
+        </button>
+        <button
+          style={{
+            ...styles.tabButton,
+            ...(activeTab === "deliveries" ? styles.tabButtonActive : styles.tabButtonInactive),
+          }}
+          onClick={() => setActiveTab("deliveries")}
+        >
+          🚚 Manage Deliveries
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === "inventory" && (
+        <>
+          {/* Stats Cards */}
+          <div style={styles.cards}>
         <div style={styles.card}>
           <h3>📦 Total Medicines</h3>
-          <p style={styles.cardValue}>{totalMedicines}</p>
+          <p style={styles.cardValue}><AnimatedNumber value={totalMedicines} /></p>
         </div>
 
         <div style={styles.card}>
           <h3>⚠ Low Stock Alerts</h3>
-          <p style={styles.cardValue}>{lowStockMedicines}</p>
+          <p style={styles.cardValue}><AnimatedNumber value={lowStockMedicines} /></p>
         </div>
 
         <div style={styles.card}>
           <h3>⏰ Expiring Soon</h3>
-          <p style={styles.cardValue}>{expiringSoonMedicines}</p>
+          <p style={styles.cardValue}><AnimatedNumber value={expiringSoonMedicines} /></p>
         </div>
 
         <div style={styles.card}>
           <h3>🚚 Pending Deliveries</h3>
-          <p style={styles.cardValue}>{pendingDeliveries}</p>
+          <p style={styles.cardValue}><AnimatedNumber value={pendingDeliveries} /></p>
         </div>
       </div>
 
@@ -145,46 +245,47 @@ const PharmacistDashboard: React.FC = () => {
           <table style={styles.table}>
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Quantity</th>
-                <th>Expiry Date</th>
-                <th>Status</th>
+                <th style={styles.tableHeader}>Name</th>
+                <th style={styles.tableHeader}>Quantity</th>
+                <th style={styles.tableHeader}>Expiry Date</th>
+                <th style={styles.tableHeader}>Status</th>
               </tr>
             </thead>
             <tbody>
-              {medicines.slice(0, 10).map((medicine) => {
+              {medicines.slice(0, 10).map((medicine, index) => {
                 const expiryDate = new Date(medicine.expiry_date);
                 const now = new Date();
                 const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                const isLowStock = medicine.quantity < 10;
-                const isExpiringSoon = daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+                const isExpiringSoon = daysUntilExpiry <= 7 && daysUntilExpiry > 0;
                 const isExpired = daysUntilExpiry <= 0;
 
-                let statusColor = "#22c55e"; // green
+                let statusColor = "#22c55e";
                 let statusText = "Good";
 
                 if (isExpired) {
-                  statusColor = "#ef4444"; // red
+                  statusColor = "#ef4444";
                   statusText = "Expired";
                 } else if (isExpiringSoon) {
-                  statusColor = "#f59e0b"; // yellow
+                  statusColor = "#f59e0b";
                   statusText = "Expiring Soon";
-                } else if (isLowStock) {
-                  statusColor = "#f59e0b"; // yellow
-                  statusText = "Low Stock";
                 }
 
                 return (
-                  <tr key={medicine.id}>
-                    <td>{medicine.name}</td>
-                    <td>{medicine.quantity}</td>
-                    <td>{new Date(medicine.expiry_date).toLocaleDateString()}</td>
-                    <td>
-                      <span style={{
-                        ...styles.statusBadge,
-                        backgroundColor: statusColor,
-                        color: "white"
-                      }}>
+                  <tr
+                    key={medicine.id}
+                    style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt}
+                  >
+                    <td style={styles.tableCell}>{medicine.name}</td>
+                    <td style={styles.tableCell}>{medicine.quantity}</td>
+                    <td style={styles.tableCell}>{new Date(medicine.expiry_date).toLocaleDateString()}</td>
+                    <td style={styles.tableCell}>
+                      <span
+                        style={{
+                          ...styles.statusBadge,
+                          backgroundColor: statusColor,
+                          color: "white",
+                        }}
+                      >
                         {statusText}
                       </span>
                     </td>
@@ -200,7 +301,7 @@ const PharmacistDashboard: React.FC = () => {
       <div style={styles.section}>
         <h2>Low Stock Alerts</h2>
         <div style={styles.alertsContainer}>
-          {medicines.filter(med => med.quantity < 10).slice(0, 6).map((medicine) => (
+          {medicines.filter(med => med.quantity < 50).slice(0, 6).map((medicine) => (
             <div key={medicine.id} style={styles.alertCard}>
               <h4>⚠ {medicine.name}</h4>
               <p>Only {medicine.quantity} units remaining</p>
@@ -276,6 +377,117 @@ const PharmacistDashboard: React.FC = () => {
           />
         </div>
       </div>
+        </>
+      )}
+
+      {/* Register Medicine Tab */}
+      {activeTab === "register" && (
+        <div style={styles.section}>
+          <h2>Register New Medicine</h2>
+          <MedicineRegistrationForm
+            onSuccess={(sealNumber) => {
+              // Refresh data when medicine is registered successfully
+              fetchDashboardData(false);
+              alert(`Medicine registered successfully! Seal Number: ${sealNumber}`);
+              // Optionally switch back to inventory tab
+              setTimeout(() => setActiveTab("inventory"), 2000);
+            }}
+            onClose={() => setActiveTab("inventory")}
+          />
+        </div>
+      )}
+
+      {/* Manage Deliveries Tab */}
+      {activeTab === "deliveries" && (
+        <>
+          {/* Deliveries Stats */}
+          <div style={styles.cards}>
+            <div style={styles.card}>
+              <h3>📋 Total Deliveries</h3>
+              <p style={styles.cardValue}>{deliveries.length}</p>
+            </div>
+            <div style={styles.card}>
+              <h3>⏳ Pending</h3>
+              <p style={styles.cardValue}>{deliveries.filter(d => d.status === 'pending').length}</p>
+            </div>
+            <div style={styles.card}>
+              <h3>✅ Approved</h3>
+              <p style={styles.cardValue}>{deliveries.filter(d => d.status === 'approved').length}</p>
+            </div>
+            <div style={styles.card}>
+              <h3>❌ Rejected</h3>
+              <p style={styles.cardValue}>{deliveries.filter(d => d.status === 'rejected').length}</p>
+            </div>
+          </div>
+
+          {/* All Deliveries Table with Actions */}
+          <div style={styles.section}>
+            <h2>All Deliveries</h2>
+            <div style={styles.tableContainer}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Recipient</th>
+                    <th>Status</th>
+                    <th>Delivery Date</th>
+                    <th>Notes</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deliveries.map((delivery) => (
+                    <tr key={delivery.id}>
+                      <td>#{delivery.id}</td>
+                      <td>{(delivery as any).Delivered_By || "N/A"}</td>
+                      <td>
+                        <span style={{
+                          ...styles.statusBadge,
+                          backgroundColor: delivery.status === "pending" ? "#f59e0b" : 
+                                           delivery.status === "approved" ? "#22c55e" : 
+                                           "#ef4444",
+                          color: "white"
+                        }}>
+                          {delivery.status}
+                        </span>
+                      </td>
+                      <td>{new Date(delivery.delivery_date).toLocaleDateString()}</td>
+                      <td>{delivery.notes || "—"}</td>
+                      <td>
+                        {delivery.status === "pending" && (
+                          <div style={styles.actionButtons}>
+                            <button
+                              style={{ ...styles.actionBtn, backgroundColor: "#22c55e" }}
+                              onClick={() => handleApproveDelivery(delivery.id)}
+                              disabled={approvalStatus[delivery.id] === "pending"}
+                            >
+                              {approvalStatus[delivery.id] === "pending" ? "..." : "Approve"}
+                            </button>
+                            <button
+                              style={{ ...styles.actionBtn, backgroundColor: "#ef4444" }}
+                              onClick={() => handleRejectDelivery(delivery.id)}
+                              disabled={approvalStatus[delivery.id] === "pending"}
+                            >
+                              {approvalStatus[delivery.id] === "pending" ? "..." : "Reject"}
+                            </button>
+                          </div>
+                        )}
+                        {delivery.status !== "pending" && (
+                          <span style={{ color: "#666" }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {deliveries.length === 0 && (
+                <p style={{ textAlign: "center", color: "#666", padding: "20px" }}>No deliveries.</p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
     </div>
   );
 };
@@ -286,16 +498,42 @@ const styles: { [key: string]: React.CSSProperties } = {
   container: {
     fontFamily: "Arial, sans-serif",
     padding: 40,
-    background: "linear-gradient(135deg, #f0f4f8, #d0e7ff)",
+    background: "#f5f7fa",
     minHeight: "100vh",
   },
   banner: {
-    background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+    background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
     color: "white",
     padding: "30px",
     borderRadius: "15px",
     marginBottom: "30px",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+    boxShadow: "0 4px 12px rgba(139, 92, 246, 0.2)",
+  },
+  tabContainer: {
+    display: "flex",
+    gap: "10px",
+    marginBottom: "30px",
+    borderBottom: "2px solid #e2e8f0",
+    flexWrap: "wrap",
+  },
+  tabButton: {
+    padding: "12px 24px",
+    fontSize: "1rem",
+    border: "none",
+    cursor: "pointer",
+    borderRadius: "8px 8px 0 0",
+    transition: "all 0.3s",
+    fontWeight: "600",
+  },
+  tabButtonActive: {
+    background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
+    color: "white",
+    boxShadow: "0 2px 8px rgba(139, 92, 246, 0.2)",
+  },
+  tabButtonInactive: {
+    background: "#ffffff",
+    color: "#64748b",
+    border: "1px solid #e2e8f0",
   },
   cards: {
     display: "grid",
@@ -304,33 +542,61 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: "30px",
   },
   card: {
-    background: "white",
+    background: "#ffffff",
     padding: "25px",
     borderRadius: "12px",
-    boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
     textAlign: "center",
     transition: "transform 0.2s",
+    color: "#1e293b",
+    border: "1px solid #e2e8f0",
   },
   cardValue: {
     fontSize: "2rem",
     fontWeight: "bold",
-    color: "#f5576c",
+    color: "#8b5cf6",
     margin: "10px 0",
   },
   section: {
-    background: "white",
+    background: "#ffffff",
     padding: "25px",
     borderRadius: "12px",
-    boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
     marginBottom: "30px",
+    color: "#1e293b",
+    border: "1px solid #e2e8f0",
   },
   tableContainer: {
     overflowX: "auto",
   },
   table: {
     width: "100%",
-    borderCollapse: "collapse",
+    borderCollapse: "separate",
+    borderSpacing: 0,
     marginTop: "15px",
+    minWidth: "650px",
+  },
+  tableHeader: {
+    padding: "14px 16px",
+    textAlign: "left",
+    backgroundColor: "#8b5cf6",
+    color: "white",
+    fontSize: "0.95rem",
+    fontWeight: 700,
+    borderBottom: "2px solid #7c3aed",
+  },
+  tableCell: {
+    padding: "14px 16px",
+    borderBottom: "1px solid #e5e7eb",
+    color: "#334155",
+    verticalAlign: "middle",
+  },
+  tableRow: {
+    backgroundColor: "#ffffff",
+    transition: "background-color 0.2s ease",
+  },
+  tableRowAlt: {
+    backgroundColor: "#f8f9fb",
   },
   statusBadge: {
     padding: "4px 8px",
@@ -344,16 +610,30 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "15px",
   },
   alertCard: {
-    background: "#fff3cd",
-    border: "1px solid #ffeaa7",
+    background: "#fffbeb",
+    border: "1px solid #fde68a",
     borderRadius: "8px",
     padding: "15px",
-    color: "#856404",
+    color: "#92400e",
   },
   chartContainer: {
     background: "white",
     padding: "20px",
     borderRadius: "10px",
     marginTop: "15px",
+  },
+  actionButtons: {
+    display: "flex",
+    gap: "8px",
+  },
+  actionBtn: {
+    padding: "6px 12px",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+    fontWeight: "bold",
+    transition: "opacity 0.2s",
   },
 };

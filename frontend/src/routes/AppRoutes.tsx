@@ -6,6 +6,8 @@ import Overview from "../pages/Dashboard/overview"; // watch case carefully
 import DoctorDashboard from "../pages/doctorDashboard";
 import PharmacistDashboard from "../pages/pharmacistDashboard";
 import AdminDashboard from "../pages/AdminDashboard";
+import SealScanner from "../components/SealScanner";
+import SealGenerator from "../components/SealGenerator";
 
 export default function AppRoutes() {
   return (
@@ -36,6 +38,8 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route path="seal-scanner" element={<SealScanner />} />
+        <Route path="seal-generator" element={<SealGenerator />} />
       </Route>
     </Routes>
   );

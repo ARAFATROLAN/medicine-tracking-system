@@ -10,16 +10,21 @@ class PrescriptionResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'patient' => $this->patient->name,
-            'doctor' => $this->doctor->name,
-            'medicines' => $this->medicines->map(function($med) {
+            'patient_id' => $this->patient_id,
+            'doctor_id' => $this->doctor_id,
+            'patient_name' => $this->patient?->name ?? 'Unknown',
+            'doctor_name' => $this->doctor?->name ?? 'Unknown',
+            'medicines' => $this->medicines ? $this->medicines->map(function($med) {
                 return [
+                    'id' => $med->id,
                     'name' => $med->name,
-                    'quantity' => $med->pivot->quantity,
-                    'dosage' => $med->pivot->dosage,
+                    'quantity' => $med->pivot?->quantity ?? 0,
+                    'dosage' => $med->pivot?->dosage ?? 'N/A',
                 ];
-            }),
-            'created_at' => $this->created_at->format('Y-m-d H:i'),
+            })->toArray() : [],
+            'notes' => $this->notes,
+            'date' => $this->date,
+            'created_at' => $this->created_at?->format('Y-m-d H:i') ?? 'N/A',
         ];
     }
 }

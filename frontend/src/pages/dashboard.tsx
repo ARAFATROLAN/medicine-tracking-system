@@ -1,6 +1,5 @@
 // src/pages/AdminDashboard.tsx
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import api from "../Services/api";
 
 interface Stats {
@@ -29,8 +28,6 @@ interface Transfer {
 }
 
 const AdminDashboard: React.FC = () => {
-  const navigate = useNavigate();
-
   const [stats, setStats] = useState<Stats>({ users: 0, medicines: 0, prescriptions: 0, transfers: 0 });
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [logs, setLogs] = useState<Log[]>([]);
@@ -74,11 +71,6 @@ const AdminDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/");
-  };
-
   // 🔥 derived alerts
   const lowStock = medicines.filter(m => m.inventories.some(inv => inv.quantity < 50));
   const expiring = medicines.filter(m => m.inventories.some(inv => {
@@ -88,23 +80,6 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div style={styles.container}>
-
-      {/* Sidebar */}
-      <aside style={styles.sidebar}>
-        <h2>Admin</h2>
-
-        <button onClick={() => navigate("/dashboard/users")}>Users</button>
-        <button onClick={() => navigate("/dashboard/medicines")}>Inventory</button>
-        <button onClick={() => navigate("/dashboard/transfers")}>Transfers</button>
-        <button onClick={() => navigate("/dashboard/reports")}>Reports</button>
-        <button onClick={() => navigate("/dashboard/settings")}>Settings</button>
-
-        <button onClick={handleLogout} style={{ marginTop: "auto", background: "red" }}>
-          Logout
-        </button>
-      </aside>
-
-      {/* Main */}
       <main style={styles.main}>
 
         {/* HEADER */}
@@ -170,21 +145,12 @@ const Card = ({ title, value }: { title: string; value: any }) => (
 
 const styles: any = {
   container: {
-    display: "flex",
-    height: "100vh",
+    display: "block",
+    minHeight: "100vh",
     fontFamily: "Arial"
   },
-  sidebar: {
-    width: 220,
-    background: "#111827",
-    color: "#fff",
-    padding: 20,
-    display: "flex",
-    flexDirection: "column",
-    gap: 10
-  },
   main: {
-    flex: 1,
+    width: "100%",
     padding: 20,
     background: "#f9fafb"
   },

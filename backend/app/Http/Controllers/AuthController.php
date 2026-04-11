@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
+use App\Models\Role;
 
 class AuthController extends Controller
 {
@@ -28,7 +30,26 @@ class AuthController extends Controller
             'specialisation' => $request->input('specialisation', 'Doctor'),
         ]);
 
+        // Assign role based on specialisation
+        $roleName = match(strtolower($request->specialisation)) {
+            'admin' => 'admin',
+            'doctor' => 'doctor',
+            'pharmacist' => 'pharmacist',
+            default => 'doctor' // default to doctor
+        };
+
+        $role = Role::firstOrCreate(['name' => $roleName]);
+        DB::table('user_roles')->insert([
+            'user_id' => $user->id,
+            'role_id' => $role->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         $token = $user->createToken('auth_token')->plainTextToken;
+
+        // Get user roles
+        $roles = $user->roles()->pluck('name')->toArray();
 
         return response()->json([
             'message' => 'User registered successfully',
@@ -39,6 +60,7 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'specialisation' => $user->specialisation,
+                'roles' => $roles,
             ]
         ]);
     }
@@ -58,6 +80,9 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        // Get user roles
+        $roles = $user->roles()->pluck('name')->toArray();
+
         return response()->json([
             'access_token' => $token,
             'token_type' => 'Bearer',
@@ -66,6 +91,7 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'specialisation' => $user->specialisation,
+                'roles' => $roles,
             ]
         ]);
     }
