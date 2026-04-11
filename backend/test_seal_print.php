@@ -66,7 +66,7 @@ try {
     } else {
         echo "⚠️  No unused seal codes for this medicine\n";
         echo "   Creating a test seal code...\n";
-        
+
         $sealCode = SealCode::create([
             'medicine_id' => $medicine->id,
             'code' => 'SEAL-' . strtoupper(uniqid()),

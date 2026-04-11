@@ -23,7 +23,7 @@ return new class extends Migration
             $table->timestamp('timestamp')->useCurrent();
             $table->string('address')->nullable();
             $table->timestamps();
-            
+
             $table->index(['vehicle_id', 'timestamp']);
             $table->index('timestamp');
         });

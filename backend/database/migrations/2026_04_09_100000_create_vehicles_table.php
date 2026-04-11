@@ -23,7 +23,7 @@ return new class extends Migration
             $table->timestamp('registration_date')->useCurrent();
             $table->timestamp('last_location_update')->nullable();
             $table->timestamps();
-            
+
             $table->index(['hospital_id', 'status']);
             $table->index('number_plate');
         });
