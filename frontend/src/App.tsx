@@ -14,6 +14,7 @@ import Register from "./pages/register";
 import DoctorDashboard from "./pages/doctorDashboard";
 import PharmacistDashboard from "./pages/pharmacistDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import MessageCenter from "./components/MessageCenter";
 
 // Layouts
 import DashboardLayout from "./layout/DashboardLayout";
@@ -84,6 +85,7 @@ const App: React.FC = () => {
           <Route path="doctor" element={<DoctorDashboard />} />
           <Route path="pharmacist" element={<PharmacistDashboard />} />
           <Route path="admin" element={<AdminDashboard />} />
+          <Route path="messages" element={<MessageCenter />} />
         </Route>
 
         {/* ✅ Catch-all */}

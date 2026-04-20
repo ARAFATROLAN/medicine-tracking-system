@@ -158,6 +158,28 @@ const markNotificationRead = async (id: number) => {
   return response.data;
 };
 
+const fetchMessages = async (page = 1) => {
+  const response = await api.get(`/messages?page=${page}`);
+  return response.data;
+};
+
+const fetchMessage = async (id: number) => {
+  const response = await api.get(`/messages/${id}`);
+  return response.data;
+};
+
+const sendMessage = async (data: any) => {
+  const response = await api.post(`/messages`, data);
+  return response.data;
+};
+
+const approveDelivery = async (deliveryId: number, sealCode: string) => {
+  const response = await api.post(`/deliveries/${deliveryId}/approve`, {
+    seal_code: sealCode,
+  });
+  return response.data;
+};
+
 // ============ REPORTS & ANALYTICS ============
 
 const fetchReports = async () => {
@@ -375,6 +397,10 @@ export default {
   // Notifications
   fetchNotifications,
   markNotificationRead,
+  fetchMessages,
+  fetchMessage,
+  sendMessage,
+  approveDelivery,
   
   // Reports
   fetchReports,

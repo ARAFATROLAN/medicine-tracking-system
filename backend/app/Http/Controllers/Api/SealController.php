@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\BranchDevice;
+use App\Models\Delivery;
 use App\Models\Medicine;
 use App\Models\SealCode;
 use App\Services\SealGenerationService;
@@ -55,13 +56,15 @@ class SealController extends Controller
                 'message' => 'Seal(s) generated successfully',
                 'data' => [
                     'seals' => collect($seals)->map(function ($seal) {
+                        $qrCode = $this->qrCodeService->generateQRCode($seal);
                         return [
                             'id' => $seal->id,
                             'code' => $seal->code,
                             'medicine_id' => $seal->medicine_id,
                             'batch_number' => $seal->batch_number,
                             'generated_at' => $seal->generated_at,
-                            'is_valid' => $seal->isValid()
+                            'is_valid' => $seal->isValid(),
+                            'qr_code_url' => $qrCode['qr_code_url'] ?? null,
                         ];
                     }),
                     'total_generated' => count($seals)
@@ -117,7 +120,7 @@ class SealController extends Controller
     {
         $validated = $request->validate([
             'seal_code' => 'required|exists:seal_codes,code',
-            'device_token' => 'required|string|exists:branch_devices,token',
+            'device_token' => 'nullable|string|exists:branch_devices,token',
             'location' => 'nullable|string',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
@@ -143,9 +146,19 @@ class SealController extends Controller
             }
 
             $seal = SealCode::where('code', $validated['seal_code'])->firstOrFail();
-            $branchDevice = BranchDevice::where('token', $validated['device_token'])->first();
+            $branchDevice = null;
+            $scanLocation = $validated['location'] ?? null;
+            $deviceInfo = $validated['device_info'] ?? null;
 
-            if (!$branchDevice || !$branchDevice->is_active) {
+            if (!empty($validated['device_token'])) {
+                $branchDevice = BranchDevice::where('token', $validated['device_token'])->first();
+                if ($branchDevice) {
+                    $scanLocation = $scanLocation ?: $branchDevice->location;
+                    $deviceInfo = $deviceInfo ?: $branchDevice->identifier;
+                }
+            }
+
+            if ($branchDevice && !$branchDevice->is_active) {
                 return response()->json([
                     'success' => false,
                     'status' => 'UNAUTHORIZED',
@@ -153,20 +166,22 @@ class SealController extends Controller
                 ], 403);
             }
 
-            // Record the scan from a registered device
             $scan = $this->verificationService->recordScan($seal, [
                 'user_id' => $user->id,
-                'branch_device_id' => $branchDevice->id,
-                'location' => $validated['location'] ?? $branchDevice->location,
+                'branch_device_id' => $branchDevice?->id,
+                'location' => $scanLocation,
                 'latitude' => $validated['latitude'] ?? null,
                 'longitude' => $validated['longitude'] ?? null,
                 'ip_address' => $request->ip(),
-                'device_info' => $validated['device_info'] ?? $branchDevice->identifier,
+                'device_info' => $deviceInfo,
                 'scanned_at' => now()
             ]);
 
-            // Get verification result
             $verification = $this->verificationService->verifySeal($seal);
+
+            $pendingDelivery = Delivery::where('status', 'pending')
+                ->latest()
+                ->first();
 
             return response()->json([
                 'success' => $verification['is_valid'],
@@ -181,7 +196,8 @@ class SealController extends Controller
                         'batch_number' => $seal->batch_number,
                         'expiry_date' => $seal->medicine->Expiry_Date,
                         'is_expired' => $seal->medicine->Expiry_Date < now(),
-                        'branch_device' => $branchDevice->only(['id', 'name', 'identifier', 'location']),
+                        'branch_device' => $branchDevice?->only(['id', 'name', 'identifier', 'location']),
+                        'pending_delivery_id' => $pendingDelivery?->id,
                     ],
                     $verification
                 )

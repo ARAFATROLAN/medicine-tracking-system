@@ -461,7 +461,8 @@ class DashboardController extends Controller
      */
     public function notifications()
     {
-        $notifications = \App\Models\Notification::select('id', 'user_id', 'message', 'read_at', 'created_at')
+        $notifications = \App\Models\Notification::where('user_id', auth()->id())
+            ->select('id', 'user_id', 'message', 'read_at', 'reference_id', 'created_at')
             ->latest()
             ->paginate(20);
 
@@ -473,7 +474,7 @@ class DashboardController extends Controller
      */
     public function markNotificationRead($id)
     {
-        $notification = \App\Models\Notification::findOrFail($id);
+        $notification = \App\Models\Notification::where('user_id', auth()->id())->findOrFail($id);
         $notification->update(['read_at' => now()]);
 
         return response()->json(['message' => 'Notification marked as read']);

@@ -103,6 +103,9 @@
 
 .header-right {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .status-button {

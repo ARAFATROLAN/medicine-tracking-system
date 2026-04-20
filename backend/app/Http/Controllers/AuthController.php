@@ -80,8 +80,12 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        // Get user roles
-        $roles = $user->roles()->pluck('name')->toArray();
+        // Get user roles - optimize query to avoid N+1
+        $roles = DB::table('user_roles')
+            ->join('roles', 'user_roles.role_id', '=', 'roles.id')
+            ->where('user_roles.user_id', $user->id)
+            ->pluck('roles.name')
+            ->toArray();
 
         return response()->json([
             'access_token' => $token,

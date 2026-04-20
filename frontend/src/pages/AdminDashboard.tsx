@@ -1,10 +1,12 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { FaBell } from "react-icons/fa";
 import api from "../Services/api";
 import AnimatedNumber from "../components/AnimatedNumber";
 import UserRegistrationForm from "../components/UserRegistrationForm";
 import VehicleRegistration from "./Admin/VehicleRegistration";
 import VehicleTracking from "./Admin/VehicleTracking";
+import { MessagePanelContext } from "../layout/DashboardLayout";
 import "./AdminDashboard.css";
 
 // ============ TYPES ============
@@ -35,6 +37,7 @@ interface Management {
 // ============ MAIN COMPONENT ============
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const panelContext = useContext(MessagePanelContext);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,6 +50,7 @@ const AdminDashboard: React.FC = () => {
   const [showHealthDropdown, setShowHealthDropdown] = useState(false);
   const [animatedDiskUsage, setAnimatedDiskUsage] = useState(0);
   const [animatedMemoryUsage, setAnimatedMemoryUsage] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const healthButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -83,8 +87,14 @@ const AdminDashboard: React.FC = () => {
   const fetchStats = useCallback(async () => {
     setError(null);
     try {
-      const statsData = await api.fetchDashboardStats();
+      const [statsData, notificationsData] = await Promise.all([
+        api.fetchDashboardStats(),
+        api.fetchNotifications(1).catch(() => ({ data: [] })),
+      ]);
       setStats(statsData);
+      const notifs = notificationsData?.data || [];
+      const unread = notifs.filter((n: any) => !n.read_at).length;
+      setUnreadCount(unread);
     } catch (err: any) {
       console.error("❌ Stats fetch error:", err);
       if (err.response?.status === 401) {
@@ -229,9 +239,31 @@ const AdminDashboard: React.FC = () => {
         <header className="admin-header">
           <div className="header-left">
             <h1>Hospital Control Center</h1>
-            <p className="subtitle">System Management & Monitoring</p>
+            <p className="subtitle">For Only System Admin</p>
           </div>
           <div className="header-right">
+            <button
+              type="button"
+              onClick={() => panelContext?.toggleMessagePanel()}
+              className="status-button"
+              style={{ background: "#dbeafe", color: "#0c4a6e", display: "inline-flex", alignItems: "center", gap: "8px" }}
+              title="Open message center"
+            >
+              <FaBell />
+              <span>Notifications</span>
+              {unreadCount > 0 && (
+                <span className="notification-badge" style={{
+                  background: '#dc2626',
+                  color: 'white',
+                  borderRadius: '9999px',
+                  padding: '2px 8px',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                }}>
+                  {unreadCount}
+                </span>
+              )}
+            </button>
             <button
               type="button"
               ref={healthButtonRef}
@@ -642,12 +674,12 @@ const UsersManagement: React.FC = () => {
                       <td>{user.contact || "N/A"}</td>
                       <td>{user.specialisation || "User"}</td>
                       <td>
-                        <button className="btn-edit">✏️ Edit</button>
+                        <button className="btn-edit">Edit</button>
                         <button
                           className="btn-delete"
                           onClick={() => handleDelete(user.id)}
                         >
-                          🗑️ Delete
+                          Delete
                         </button>
                       </td>
                     </tr>
@@ -757,7 +789,7 @@ const HospitalManagement: React.FC = () => {
   };
 
   const handleDeleteHospital = async (id: number) => {
-    if (!window.confirm("Delete this hospital and all registered devices?")) {
+    if (!window.confirm("Delete this hospital and all its data?")) {
       return;
     }
 
@@ -1484,7 +1516,7 @@ const InventoryManagement: React.FC = () => {
                   <td>{new Date(item.expiry_date).toLocaleDateString()}</td>
                   <td>{item.location || "Warehouse"}</td>
                   <td>
-                    <button className="btn-edit">✏️ Edit</button>
+                    <button className="btn-edit">Edit</button>
                   </td>
                 </tr>
               ))}

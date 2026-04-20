@@ -1,5 +1,6 @@
 // src/pages/DoctorDashboard.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import { FaBell } from "react-icons/fa";
 import { Line } from "react-chartjs-2";
 import AnimatedNumber from "../components/AnimatedNumber";
 import {
@@ -14,6 +15,7 @@ import {
   Legend,
 } from "chart.js";
 import api from "../Services/api";
+import { MessagePanelContext } from "../layout/DashboardLayout";
 import PrescriptionForm from "../components/PrescriptionForm";
 import PatientRegistrationForm from "../components/PatientRegistrationForm";
 
@@ -54,6 +56,7 @@ interface Medicine {
 
 const DoctorDashboard: React.FC = () => {
   const name = localStorage.getItem("name") || "Doctor";
+  const panelContext = useContext(MessagePanelContext);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
@@ -61,32 +64,38 @@ const DoctorDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isInitialFetch, setIsInitialFetch] = useState(true);
   const [activeTab, setActiveTab] = useState<"dashboard" | "create" | "register">("dashboard");
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Fetch function (handles both initial load and refresh)
   const fetchDashboardData = React.useCallback(async (isInitial: boolean = false) => {
     try {
-      console.log("DoctorDashboard: Fetching prescriptions, patients, medicines...");
+      console.log("DoctorDashboard: Fetching prescriptions, patients, medicines, and notifications...");
       
-      const [prescriptionsData, patientsData, medicinesData] = await Promise.all([
+      const [prescriptionsData, patientsData, medicinesData, notificationsData] = await Promise.all([
         api.fetchPrescriptions(),
         api.fetchPatients(),
         api.fetchMedicines(),
+        api.fetchNotifications(1).catch(() => ({ data: [] })),
       ]);
       
       console.log("DoctorDashboard: Received data", {
         prescriptionsData,
         patientsData,
         medicinesData,
+        notificationsData,
       });
 
       // Extract data from responses
       const prescs = prescriptionsData?.data || [];
       const pats = patientsData?.data || [];
       const meds = medicinesData?.data || [];
+      const notifs = notificationsData?.data || [];
 
       setPrescriptions(prescs);
       setPatients(pats);
       setMedicines(meds);
+      const unread = notifs.filter((n: any) => !n.read_at).length;
+      setUnreadCount(unread);
       setError(null);
       
       // Only set loading to false on initial fetch
@@ -164,8 +173,46 @@ const DoctorDashboard: React.FC = () => {
   return (
     <div style={styles.container}>
       <div style={styles.banner}>
-        <h1>👨‍⚕️ Doctor Dashboard</h1>
-        <p>Welcome Dr. {name}</p>
+        <div>
+          <h1>👨‍⚕️ Doctor Dashboard</h1>
+          <p>Welcome Dr. {name}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => panelContext?.toggleMessagePanel()}
+          style={{
+            background: "#dbeafe",
+            color: "#0c4a6e",
+            border: "none",
+            borderRadius: "9999px",
+            padding: "8px 16px",
+            fontSize: "13px",
+            fontWeight: "600",
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            transition: "all 0.2s ease",
+            height: "fit-content",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#bfdbfe")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "#dbeafe")}
+        >
+          <FaBell />
+          <span>Notifications</span>
+          {unreadCount > 0 && (
+            <span className="notification-badge" style={{
+              background: '#dc2626',
+              color: 'white',
+              borderRadius: '9999px',
+              padding: '2px 8px',
+              fontSize: '12px',
+              fontWeight: 'bold',
+            }}>
+              {unreadCount}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Tab Navigation */}
@@ -379,6 +426,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "30px",
     borderRadius: "15px",
     marginBottom: "30px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
     boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)",
   },
   tabContainer: {

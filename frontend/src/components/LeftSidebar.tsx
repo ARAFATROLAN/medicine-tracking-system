@@ -7,16 +7,18 @@ import {
   FaSignOutAlt,
   FaSun,
   FaMoon,
-  FaKey
+  FaKey,
+  FaEnvelope
 } from 'react-icons/fa';
 import api from '../Services/api';
 
 interface LeftSidebarProps {
   isOpen: boolean;
   onToggle: () => void;
+  onMessagesClick?: () => void;
 }
 
-const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, onToggle }) => {
+const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, onToggle, onMessagesClick }) => {
   const navigate = useNavigate();
   const [darkMode, setDarkMode] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -121,6 +123,24 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, onToggle }) => {
                 {darkMode ? 'Light Mode' : 'Dark Mode'}
               </span>
             </button>
+
+            {/* Messages */}
+            <div className="space-y-1">
+              <div className="px-4 py-2 text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                Communication
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onMessagesClick?.();
+                  onToggle();
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <FaEnvelope className="text-blue-500" />
+                <span className="text-gray-700 dark:text-gray-300">Messages</span>
+              </button>
+            </div>
 
             {/* Manage Accounts */}
             <div className="space-y-1">

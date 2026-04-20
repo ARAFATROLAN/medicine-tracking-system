@@ -9,6 +9,7 @@ interface SealData {
   batch_number: string;
   generated_at: string;
   is_valid: boolean;
+  qr_code_url?: string;
 }
 
 interface Medicine {
@@ -297,6 +298,16 @@ export default function SealGenerator() {
                           </p>
                         </div>
                       </div>
+
+                      {seal.qr_code_url && (
+                        <div className="mb-4 flex items-center justify-center">
+                          <img
+                            src={seal.qr_code_url}
+                            alt={`QR code for ${seal.code}`}
+                            className="w-32 h-32 object-contain rounded-lg border border-gray-200"
+                          />
+                        </div>
+                      )}
 
                       <div className="flex gap-2">
                         <button

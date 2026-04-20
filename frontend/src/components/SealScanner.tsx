@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import api from '../Services/api';
 import { QrCode, CheckCircle, AlertCircle, Loader, MapPin, Clock, User } from 'lucide-react';
 
 interface SealVerification {
@@ -14,6 +15,9 @@ interface SealVerification {
   };
   seal_generated_at: string;
   batch_number: string;
+  scanned_at?: string;
+  scan_location?: string;
+  pending_delivery_id?: number;
 }
 
 export default function SealScanner() {
@@ -22,7 +26,8 @@ export default function SealScanner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [verification, setVerification] = useState<SealVerification | null>(null);
-  const [scannedAt] = useState(new Date());
+  const [approvalLoading, setApprovalLoading] = useState(false);
+  const [approvalMessage, setApprovalMessage] = useState('');
 
   const handleVerifySeal = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,9 +47,16 @@ export default function SealScanner() {
       let longitude = undefined;
 
       if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition((position) => {
-          latitude = position.coords.latitude;
-          longitude = position.coords.longitude;
+        await new Promise<void>((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              latitude = position.coords.latitude;
+              longitude = position.coords.longitude;
+              resolve();
+            },
+            () => resolve(),
+            { timeout: 5000 }
+          );
         });
       }
 
@@ -64,7 +76,9 @@ export default function SealScanner() {
         }
       );
 
-      setVerification(response.data.data);
+      const verificationData = response.data.data;
+      setVerification(verificationData);
+      setApprovalMessage('');
       if (!response.data.success) {
         setError(response.data.message);
       }
@@ -72,6 +86,25 @@ export default function SealScanner() {
       setError(err.response?.data?.message || 'Failed to verify seal');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApproveDelivery = async () => {
+    if (!verification?.pending_delivery_id) {
+      return;
+    }
+
+    setApprovalLoading(true);
+    setApprovalMessage('');
+
+    try {
+      await api.approveDelivery(verification.pending_delivery_id, sealCode);
+      setApprovalMessage('Delivery approved successfully.');
+    } catch (err: any) {
+      console.error('Delivery approval failed', err);
+      setApprovalMessage(err?.response?.data?.message || 'Failed to approve delivery.');
+    } finally {
+      setApprovalLoading(false);
     }
   };
 
@@ -252,12 +285,12 @@ export default function SealScanner() {
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2 text-gray-700">
                       <Clock size={16} className="text-blue-600" />
-                      <span><strong>Scanned At:</strong> {scannedAt.toLocaleString()}</span>
+                      <span><strong>Scanned At:</strong> {verification.scanned_at ? new Date(verification.scanned_at).toLocaleString() : 'Unknown'}</span>
                     </div>
-                    {location && (
+                    {(verification.scan_location || location) && (
                       <div className="flex items-center gap-2 text-gray-700">
                         <MapPin size={16} className="text-red-600" />
-                        <span><strong>Location:</strong> {location}</span>
+                        <span><strong>Location:</strong> {verification.scan_location || location}</span>
                       </div>
                     )}
                     <div className="flex items-center gap-2 text-gray-700">
@@ -274,6 +307,22 @@ export default function SealScanner() {
                 >
                   View Complete Audit Trail
                 </button>
+
+                {verification.pending_delivery_id && verification.is_valid && (
+                  <button
+                    onClick={handleApproveDelivery}
+                    disabled={approvalLoading}
+                    className={`w-full py-3 px-4 rounded-lg text-white transition-colors font-semibold text-sm ${approvalLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
+                  >
+                    {approvalLoading ? 'Approving Delivery...' : `Approve Delivery #${verification.pending_delivery_id}`}
+                  </button>
+                )}
+
+                {approvalMessage && (
+                  <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+                    {approvalMessage}
+                  </div>
+                )}
               </div>
             )}
           </div>

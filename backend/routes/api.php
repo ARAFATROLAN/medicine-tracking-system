@@ -8,6 +8,7 @@ use App\Http\Controllers\MedicineController;
 use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\Api\SealController;
 use App\Http\Controllers\VehicleController;
@@ -95,6 +96,11 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('prescriptions', PrescriptionController::class);
         Route::apiResource('deliveries', DeliveryController::class);
         Route::post('deliveries/{id}/approve', [DeliveryController::class, 'approve']);
+
+        // Messaging
+        Route::get('messages', [MessageController::class, 'index']);
+        Route::get('messages/{id}', [MessageController::class, 'show']);
+        Route::post('messages', [MessageController::class, 'store']);
 
         // Medicine Monitoring
         Route::get('medicines/low-stock', [MedicineController::class, 'lowStock']);

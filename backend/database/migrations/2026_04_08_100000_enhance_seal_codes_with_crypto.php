@@ -20,9 +20,8 @@ return new class extends Migration
             $table->string('qr_code_data')->nullable()->after('generated_at'); // QR code payload
             $table->string('batch_number')->nullable()->after('qr_code_data'); // Batch identifier for medicines
             $table->string('location_generated')->nullable()->after('batch_number'); // Where the seal was generated
-            
+
             // Add indices for performance
-            $table->index('signature');
             $table->index('batch_number');
         });
     }
@@ -33,7 +32,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('seal_codes', function (Blueprint $table) {
-            $table->dropIndex('seal_codes_signature_index');
             $table->dropIndex('seal_codes_batch_number_index');
             $table->dropColumn([
                 'signature',

@@ -1,5 +1,6 @@
 // src/pages/PharmacistDashboard.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import { FaBell } from "react-icons/fa";
 import { Bar } from "react-chartjs-2";
 import AnimatedNumber from "../components/AnimatedNumber";
 import {
@@ -12,6 +13,7 @@ import {
   Legend,
 } from "chart.js";
 import api from "../Services/api";
+import { MessagePanelContext } from "../layout/DashboardLayout";
 import MedicineRegistrationForm from "../components/MedicineRegistrationForm";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -32,8 +34,25 @@ interface Delivery {
   notes?: string;
 }
 
+const notificationButtonStyle: React.CSSProperties = {
+  background: "#dbeafe",
+  color: "#0c4a6e",
+  border: "none",
+  borderRadius: "9999px",
+  padding: "8px 16px",
+  fontSize: "13px",
+  fontWeight: "600",
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "8px",
+  transition: "all 0.2s ease",
+  height: "fit-content",
+};
+
 const PharmacistDashboard: React.FC = () => {
   const name = localStorage.getItem("name") || "Pharmacist";
+  const panelContext = useContext(MessagePanelContext);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,28 +60,34 @@ const PharmacistDashboard: React.FC = () => {
   const [isInitialFetch, setIsInitialFetch] = useState(true);
   const [activeTab, setActiveTab] = useState<"inventory" | "register" | "deliveries">("inventory");
   const [approvalStatus, setApprovalStatus] = useState<{ [key: number]: string }>({});
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Fetch function (handles both initial load and refresh)
   const fetchDashboardData = React.useCallback(async (isInitial: boolean = false) => {
     try {
-      console.log("PharmacistDashboard: Fetching medicines and deliveries...");
+      console.log("PharmacistDashboard: Fetching medicines, deliveries, and notifications...");
       
-      const [medicinesData, deliveriesData] = await Promise.all([
+      const [medicinesData, deliveriesData, notificationsData] = await Promise.all([
         api.fetchMedicines(),
         api.fetchDeliveries(),
+        api.fetchNotifications(1).catch(() => ({ data: [] })),
       ]);
       
       console.log("PharmacistDashboard: Received data", {
         medicinesData,
         deliveriesData,
+        notificationsData,
       });
 
       // Extract data from responses
       const meds = medicinesData?.data || [];
       const dels = deliveriesData?.data || [];
+      const notifs = notificationsData?.data || [];
 
       setMedicines(meds);
       setDeliveries(dels);
+      const unread = notifs.filter((n: any) => !n.read_at).length;
+      setUnreadCount(unread);
       setError(null);
       
       // Only set loading to false on initial fetch
@@ -177,8 +202,32 @@ const PharmacistDashboard: React.FC = () => {
   return (
     <div style={styles.container}>
       <div style={styles.banner}>
-        <h1>💊 Pharmacist Dashboard</h1>
-        <p>Welcome {name}</p>
+        <div>
+          <h1>💊 Pharmacist Dashboard</h1>
+          <p>Welcome {name}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => panelContext?.toggleMessagePanel()}
+          style={notificationButtonStyle}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#bfdbfe")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "#dbeafe")}
+        >
+          <FaBell />
+          <span>Notifications</span>
+          {unreadCount > 0 && (
+            <span className="notification-badge" style={{
+              background: '#dc2626',
+              color: 'white',
+              borderRadius: '9999px',
+              padding: '2px 8px',
+              fontSize: '12px',
+              fontWeight: 'bold',
+            }}>
+              {unreadCount}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Tab Navigation */}
@@ -506,8 +555,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: "white",
     padding: "30px",
     borderRadius: "15px",
-    marginBottom: "30px",
-    boxShadow: "0 4px 12px rgba(139, 92, 246, 0.2)",
+    marginBottom: "30px",    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",    boxShadow: "0 4px 12px rgba(139, 92, 246, 0.2)",
   },
   tabContainer: {
     display: "flex",
