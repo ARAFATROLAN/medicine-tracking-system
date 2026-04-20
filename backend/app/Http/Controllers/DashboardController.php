@@ -504,21 +504,11 @@ class DashboardController extends Controller
     public function systemHealth()
     {
         try {
-            // Calculate disk usage safely
-            $disk_usage = 0;
-            $disk_total = disk_total_space("/");
-            $disk_free = disk_free_space("/");
-            if ($disk_total && $disk_free !== false) {
-                $disk_usage = round((($disk_total - $disk_free) / $disk_total) * 100, 2);
-            }
+            // Calculate disk usage from the actual filesystem
+            $disk_usage = $this->getActualDiskUsage();
 
-            // Calculate memory usage safely
-            $memory_usage = 0;
-            $memory_peak = memory_get_peak_usage();
-            $memory_current = memory_get_usage();
-            if ($memory_peak > 0) {
-                $memory_usage = round(($memory_current / $memory_peak) * 100, 2);
-            }
+            // Calculate actual system memory usage
+            $memory_usage = $this->getActualMemoryUsage();
 
             // Get recent errors safely
             $recent_errors = [];
@@ -549,6 +539,143 @@ class DashboardController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Get actual disk usage from the filesystem
+     */
+    private function getActualDiskUsage()
+    {
+        try {
+            // Try using 'df' command (Linux/Mac/Docker)
+            $output = shell_exec('df / 2>/dev/null | tail -1');
+            if ($output) {
+                $parts = preg_split('/\s+/', trim($output));
+                if (count($parts) >= 5) {
+                    // parts[2] is used, parts[1] is total
+                    $used = (int)$parts[2];
+                    $total = (int)$parts[1];
+                    if ($total > 0) {
+                        return round(($used / $total) * 100, 2);
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Failed to get disk usage via df: ' . $e->getMessage());
+        }
+
+        // Fallback: use PHP functions
+        $disk_total = disk_total_space("/");
+        $disk_free = disk_free_space("/");
+        if ($disk_total && $disk_free !== false && $disk_total > 0) {
+            return round((($disk_total - $disk_free) / $disk_total) * 100, 2);
+        }
+
+        return 0;
+    }
+
+    /**
+     * Get actual system memory usage
+     */
+    private function getActualMemoryUsage()
+    {
+        try {
+            // Try using 'free' command (Linux)
+            $output = shell_exec('free 2>/dev/null | grep Mem');
+            if ($output) {
+                $parts = preg_split('/\s+/', trim($output));
+                if (count($parts) >= 3) {
+                    // parts[1] is total, parts[2] is used
+                    $total = (int)$parts[1];
+                    $used = (int)$parts[2];
+                    if ($total > 0) {
+                        return round(($used / $total) * 100, 2);
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Failed to get memory usage via free: ' . $e->getMessage());
+        }
+
+        try {
+            // Alternative: try reading /proc/meminfo (Linux/Docker)
+            $meminfo = @file_get_contents('/proc/meminfo');
+            if ($meminfo) {
+                preg_match('/MemTotal:\s+(\d+)/', $meminfo, $total_match);
+                preg_match('/MemAvailable:\s+(\d+)/', $meminfo, $available_match);
+                
+                if (!empty($total_match[1]) && !empty($available_match[1])) {
+                    $total = (int)$total_match[1];
+                    $available = (int)$available_match[1];
+                    $used = $total - $available;
+                    
+                    if ($total > 0) {
+                        return round(($used / $total) * 100, 2);
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Failed to get memory usage via /proc/meminfo: ' . $e->getMessage());
+        }
+
+        try {
+            // Alternative: try 'ps' command to get total processes memory
+            $output = shell_exec('ps aux 2>/dev/null | awk \'{sum+=$6} END {print sum}\'');
+            if ($output) {
+                // Get memory limit
+                $memory_limit = ini_get('memory_limit');
+                $memory_limit_bytes = $this->convertMemoryToBytes($memory_limit);
+                $used_kb = (int)trim($output);
+                $used_bytes = $used_kb * 1024;
+                
+                if ($memory_limit_bytes > 0 && $used_bytes > 0) {
+                    return min(100, round(($used_bytes / $memory_limit_bytes) * 100, 2));
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Failed to get memory usage via ps: ' . $e->getMessage());
+        }
+
+        // Fallback: use PHP memory tracking relative to memory limit
+        $memory_limit = ini_get('memory_limit');
+        $memory_current = memory_get_usage(true);
+        
+        if ($memory_limit === '-1') {
+            // Unlimited memory - use peak usage as reference
+            $memory_peak = memory_get_peak_usage(true);
+            if ($memory_peak > 0) {
+                return round(($memory_current / $memory_peak) * 100, 2);
+            }
+        } else {
+            // Use configured memory limit
+            $memory_limit_bytes = $this->convertMemoryToBytes($memory_limit);
+            if ($memory_limit_bytes > 0) {
+                return min(100, round(($memory_current / $memory_limit_bytes) * 100, 2));
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Convert memory string to bytes
+     */
+    private function convertMemoryToBytes($value)
+    {
+        $value = trim($value);
+        $last = strtolower($value[strlen($value) - 1]);
+        $num = (int)$value;
+
+        switch ($last) {
+            case 'g':
+                $num *= 1024;
+            case 'm':
+                $num *= 1024;
+            case 'k':
+                $num *= 1024;
+        }
+
+        return $num;
     }
 
     /**
