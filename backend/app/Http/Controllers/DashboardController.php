@@ -603,12 +603,12 @@ class DashboardController extends Controller
             if ($meminfo) {
                 preg_match('/MemTotal:\s+(\d+)/', $meminfo, $total_match);
                 preg_match('/MemAvailable:\s+(\d+)/', $meminfo, $available_match);
-                
+
                 if (!empty($total_match[1]) && !empty($available_match[1])) {
                     $total = (int)$total_match[1];
                     $available = (int)$available_match[1];
                     $used = $total - $available;
-                    
+
                     if ($total > 0) {
                         return round(($used / $total) * 100, 2);
                     }
@@ -627,7 +627,7 @@ class DashboardController extends Controller
                 $memory_limit_bytes = $this->convertMemoryToBytes($memory_limit);
                 $used_kb = (int)trim($output);
                 $used_bytes = $used_kb * 1024;
-                
+
                 if ($memory_limit_bytes > 0 && $used_bytes > 0) {
                     return min(100, round(($used_bytes / $memory_limit_bytes) * 100, 2));
                 }
@@ -639,7 +639,7 @@ class DashboardController extends Controller
         // Fallback: use PHP memory tracking relative to memory limit
         $memory_limit = ini_get('memory_limit');
         $memory_current = memory_get_usage(true);
-        
+
         if ($memory_limit === '-1') {
             // Unlimited memory - use peak usage as reference
             $memory_peak = memory_get_peak_usage(true);
