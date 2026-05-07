@@ -324,7 +324,7 @@ const VehicleTracking: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   return (
     <div className="vehicle-tracking-container">
       <div className="tracking-header">
-        <h2>Track Vehicle in Transit</h2>
+        <h2 style={{ fontWeight: 'bold' }}>Track Vehicle in Transit</h2>
         <button className="btn-close" onClick={onClose}>
           ✕
         </button>
@@ -352,7 +352,7 @@ const VehicleTracking: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
           {selectedVehicle && (
             <div className="vehicle-info">
-              <h3>Vehicle Details</h3>
+              <h3 style={{ fontWeight: 'bold' }}>Vehicle Details</h3>
               <div className="info-grid">
                 <div className="info-item">
                   <label>Number Plate:</label>
@@ -375,7 +375,7 @@ const VehicleTracking: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               </div>
               {selectedVehicle.latestLocation && (
                 <div className="location-info">
-                  <h4>Current Location</h4>
+                  <h4 style={{ fontWeight: 'bold' }}>Current Location</h4>
                   <p>
                     <strong>Speed:</strong> {selectedVehicle.latestLocation.speed || 0} km/h
                   </p>

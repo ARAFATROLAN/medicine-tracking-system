@@ -62,7 +62,8 @@ const MessageNotifications: React.FC<MessageNotificationsProps> = ({ open, onTog
   const emojiStickers = ['😀', '😂', '😍', '🤔', '😢', '👍', '❤️', '🔥', '✨', '🎉', '👏', '💯', '🚀', '⭐', '💪', '🤝', '😎', '🥳', '😱', '🎊'];
 
   const panelOpen = open === undefined ? isOpen : open;
-  const unreadCount = notifications.filter((item) => !item.read_at).length;
+  const visibleNotifications = notifications.filter((item) => item.type !== "prescription");
+  const unreadCount = visibleNotifications.filter((item) => !item.read_at).length;
 
   const parsePagedResponse = (response: any) => {
     const payload = response?.data?.data ? response.data.data : response.data;
@@ -335,10 +336,10 @@ const MessageNotifications: React.FC<MessageNotificationsProps> = ({ open, onTog
 
               {showUnreadSection && (
                 <div className="mt-3 space-y-2 px-2">
-                  {notifications.length === 0 ? (
+                  {visibleNotifications.length === 0 ? (
                     <p className="py-3 text-sm text-slate-500">No recent notifications.</p>
                   ) : (
-                    notifications
+                    visibleNotifications
                       .filter((n) => !n.read_at || replyingToNotificationId === n.id)
                       .map((notification) => (
                         <div key={notification.id} className="rounded-2xl border border-blue-200 bg-blue-50 p-3 transition hover:border-blue-300">

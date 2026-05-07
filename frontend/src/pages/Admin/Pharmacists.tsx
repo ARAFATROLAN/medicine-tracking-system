@@ -1,7 +1,7 @@
 export default function Doctors() {
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded p-6">
-      <h2 className="text-2xl font-semibold mb-4">Manage Doctors</h2>
+      <h2 className="text-2xl font-bold mb-4">Manage Doctors</h2>
       <table className="w-full text-left border-collapse">
         <thead>
           <tr>

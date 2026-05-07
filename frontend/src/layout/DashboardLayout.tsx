@@ -4,6 +4,7 @@ import { createContext, useState } from "react";
 import { Outlet } from "react-router-dom";
 import LeftSidebar from "../components/LeftSidebar";
 import MessageNotifications from "../components/MessageNotifications";
+import { NotificationProvider } from "../context/NotificationContext";
 
 export interface MessagePanelContextValue {
   messagePanelOpen: boolean;
@@ -26,10 +27,11 @@ const DashboardLayout: FC = () => {
   };
 
   return (
-    <MessagePanelContext.Provider
-      value={{ messagePanelOpen, toggleMessagePanel, closeMessagePanel }}
-    >
-      <div style={{ minHeight: "100vh", backgroundColor: "#f5f7fa" }}>
+    <NotificationProvider>
+      <MessagePanelContext.Provider
+        value={{ messagePanelOpen, toggleMessagePanel, closeMessagePanel }}
+      >
+        <div style={{ minHeight: "100vh", backgroundColor: "#f5f7fa" }}>
         <LeftSidebar
           isOpen={sidebarOpen}
           onToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -56,6 +58,7 @@ const DashboardLayout: FC = () => {
         </main>
       </div>
     </MessagePanelContext.Provider>
+    </NotificationProvider>
   );
 };
 

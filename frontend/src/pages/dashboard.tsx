@@ -97,14 +97,14 @@ const AdminDashboard: React.FC = () => {
 
         {/* 🔥 ALERTS */}
         <div style={styles.section}>
-          <h2>⚠ Alerts</h2>
+          <h2 style={{ fontWeight: 'bold' }}>⚠ Alerts</h2>
           <p>Low Stock: {lowStock.length}</p>
           <p>Expiring Soon: {expiring.length}</p>
         </div>
 
         {/* 🔥 TRANSFER APPROVAL */}
         <div style={styles.section}>
-          <h2>Transfer Verification</h2>
+          <h2 style={{ fontWeight: 'bold' }}>Transfer Verification</h2>
           {transfers.map(t => (
             <div key={t.id}>
               {t.medicine} — {t.status}
@@ -114,7 +114,7 @@ const AdminDashboard: React.FC = () => {
 
         {/* 🔥 LIVE ACTIVITY LOG */}
         <div style={styles.section}>
-          <h2>Live Activity</h2>
+          <h2 style={{ fontWeight: 'bold' }}>Live Activity</h2>
           {logs.slice(0, 5).map(log => (
             <div key={log.id}>
               {log.action} — {log.created_at}
@@ -138,7 +138,7 @@ export default AdminDashboard;
 // 🔥 reusable card
 const Card = ({ title, value }: { title: string; value: any }) => (
   <div style={styles.card}>
-    <h3>{title}</h3>
+    <h3 style={{ fontWeight: 'bold' }}>{title}</h3>
     <p>{value}</p>
   </div>
 );

@@ -111,98 +111,126 @@ const PatientRegistrationForm: React.FC<PatientRegistrationFormProps> = ({
       )}
 
       <form onSubmit={handleSubmit}>
-        {/* Name */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>
-            Full Name <span style={styles.required}>*</span>
-          </label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="Enter patient full name"
-            style={styles.input}
-            disabled={loading}
-          />
-        </div>
+        <table style={styles.formTable}>
+          <tbody>
+            {/* Name */}
+            <tr>
+              <td style={styles.labelCell}>
+                <label style={styles.label}>
+                  Full Name <span style={styles.required}>*</span>
+                </label>
+              </td>
+              <td style={styles.inputCell}>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Enter patient full name"
+                  style={styles.input}
+                  disabled={loading}
+                />
+              </td>
+            </tr>
 
-        {/* Email */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>
-            Email <span style={styles.required}>*</span>
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="Enter patient email"
-            style={styles.input}
-            disabled={loading}
-          />
-        </div>
+            {/* Email */}
+            <tr>
+              <td style={styles.labelCell}>
+                <label style={styles.label}>
+                  Email <span style={styles.required}>*</span>
+                </label>
+              </td>
+              <td style={styles.inputCell}>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Enter patient email"
+                  style={styles.input}
+                  disabled={loading}
+                />
+              </td>
+            </tr>
 
-        {/* Phone */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>
-            Phone <span style={styles.required}>*</span>
-          </label>
-          <input
-            type="tel"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            placeholder="Enter patient phone number"
-            style={styles.input}
-            disabled={loading}
-          />
-        </div>
+            {/* Phone */}
+            <tr>
+              <td style={styles.labelCell}>
+                <label style={styles.label}>
+                  Phone <span style={styles.required}>*</span>
+                </label>
+              </td>
+              <td style={styles.inputCell}>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="Enter patient phone number"
+                  style={styles.input}
+                  disabled={loading}
+                />
+              </td>
+            </tr>
 
-        {/* Address */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>
-            Address <span style={styles.required}>*</span>
-          </label>
-          <textarea
-            name="address"
-            value={formData.address}
-            onChange={handleChange}
-            placeholder="Enter patient address"
-            style={styles.textarea}
-            rows={2}
-            disabled={loading}
-          />
-        </div>
+            {/* Address */}
+            <tr>
+              <td style={styles.labelCell}>
+                <label style={styles.label}>
+                  Address <span style={styles.required}>*</span>
+                </label>
+              </td>
+              <td style={styles.inputCell}>
+                <textarea
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="Enter patient address"
+                  style={styles.textarea}
+                  rows={2}
+                  disabled={loading}
+                />
+              </td>
+            </tr>
 
-        {/* Date of Birth */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>
-            Date of Birth <span style={styles.required}>*</span>
-          </label>
-          <input
-            type="date"
-            name="date_of_birth"
-            value={formData.date_of_birth}
-            onChange={handleChange}
-            style={styles.input}
-            disabled={loading}
-          />
-        </div>
+            {/* Date of Birth */}
+            <tr>
+              <td style={styles.labelCell}>
+                <label style={styles.label}>
+                  Date of Birth <span style={styles.required}>*</span>
+                </label>
+              </td>
+              <td style={styles.inputCell}>
+                <input
+                  type="date"
+                  name="date_of_birth"
+                  value={formData.date_of_birth}
+                  onChange={handleChange}
+                  style={styles.input}
+                  disabled={loading}
+                />
+              </td>
+            </tr>
 
-        {/* Health Status */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Health Status / Medical History</label>
-          <textarea
-            name="health_status"
-            value={formData.health_status}
-            onChange={handleChange}
-            placeholder="Enter any relevant health information..."
-            style={styles.textarea}
-            rows={3}
-            disabled={loading}
-          />
-        </div>
+            {/* Health Status */}
+            <tr>
+              <td style={styles.labelCell}>
+                <label style={styles.label}>Health Status / Medical History</label>
+              </td>
+              <td style={styles.inputCell}>
+                <textarea
+                  name="health_status"
+                  value={formData.health_status}
+                  onChange={handleChange}
+                  placeholder="Enter any relevant health information..."
+                  style={styles.textarea}
+                  rows={3}
+                  disabled={loading}
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
         {/* Buttons */}
         <div style={styles.buttonGroup}>
@@ -239,12 +267,23 @@ const styles: { [key: string]: React.CSSProperties } = {
     border: "1px solid #e5e7eb",
     marginBottom: "20px",
   },
-  formGroup: {
+  formTable: {
+    width: "100%",
+    borderCollapse: "collapse",
     marginBottom: "20px",
+  },
+  labelCell: {
+    padding: "12px 15px 12px 0",
+    textAlign: "right",
+    width: "30%",
+    verticalAlign: "top",
+  },
+  inputCell: {
+    padding: "12px 0",
+    width: "70%",
   },
   label: {
     display: "block",
-    marginBottom: "8px",
     fontWeight: "600",
     color: "#374151",
     fontSize: "0.95rem",

@@ -40,23 +40,34 @@ class MedicineController extends Controller
                 'location_generated' => 'pharmacy_registration',
             ]);
 
-            // Create medicine
-            $medicine = Medicine::create([
-                'Name' => $validated['name'],
-                'Brand' => $validated['brand'] ?? 'N/A',
-                'category' => $validated['category'],
-                'Description' => $validated['description'] ?? '',
-                'Seal_Code' => $sealCode,
-                'Expiry_Date' => $validated['expiry_date'],
-                'Quantity_in_Stock' => $validated['quantity'],
-            ]);
+            // Determine whether this medicine already exists by name
+            $existingMedicine = Medicine::whereRaw('LOWER(Name) = ?', [Str::lower(trim($validated['name']))])->first();
+            $minimumStockLevel = 20; // Default minimum stock
+
+            if ($existingMedicine) {
+                $existingMedicine->Quantity_in_Stock += $validated['quantity'];
+                $existingMedicine->Seal_Code = $sealCode;
+                $existingMedicine->save();
+
+                $medicine = $existingMedicine;
+            } else {
+                $medicine = Medicine::create([
+                    'Name' => $validated['name'],
+                    'Brand' => $validated['brand'] ?? 'N/A',
+                    'category' => $validated['category'],
+                    'Description' => $validated['description'] ?? '',
+                    'Seal_Code' => $sealCode,
+                    'Expiry_Date' => $validated['expiry_date'],
+                    'Quantity_in_Stock' => $validated['quantity'],
+                ]);
+            }
 
             // Update seal code with medicine_id
             $sealCodeRecord->update([
                 'medicine_id' => $medicine->id,
             ]);
 
-            // Create inventory record
+            // Create inventory record for this batch
             $inventory = MedicineInventory::create([
                 'medicine_id' => $medicine->id,
                 'batch_number' => $validated['batch_number'],
@@ -65,14 +76,13 @@ class MedicineController extends Controller
             ]);
 
             // Check stock level and create delivery request if needed
-            $minimumStockLevel = 20; // Default minimum stock
-            if ($validated['quantity'] < $minimumStockLevel) {
+            if ($medicine->Quantity_in_Stock < $minimumStockLevel) {
                 Delivery::create([
                     'prescription_ID' => null,
                     'Status' => 'pending',
                     'Delivery_Date' => now(),
                     'Delivered_By' => null,
-                    'notes' => 'Auto-generated delivery request for low stock. Medicine: ' . $medicine->Name . ', Required qty: ' . ($minimumStockLevel - $validated['quantity']),
+                    'notes' => 'Auto-generated delivery request for low stock. Medicine: ' . $medicine->Name . ', Required qty: ' . ($minimumStockLevel - $medicine->Quantity_in_Stock),
                 ]);
             }
 

@@ -11,7 +11,7 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: #f5f7fa;
+  background: var(--theme-bg-solid, #f5f7fa);
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   overflow: hidden;
 }
@@ -46,25 +46,28 @@
   overflow-x: auto;
 }
 
-.admin-tab {
+..admin-tab {
   padding: 12px 20px;
-  background: transparent;
-  color: #64748b;
+  background: #f8fafc;
+  color: #1f2937;
   border: none;
   border-bottom: 3px solid transparent;
+  border-radius: 14px;
   cursor: pointer;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   transition: all 0.3s ease;
   white-space: nowrap;
 }
 
 .admin-tab:hover {
-  color: #2c3e50;
+  color: #111827;
+  background: #eef2ff;
 }
 
 .admin-tab.active {
-  color: #2563eb;
+  color: #1d4ed8;
+  background: #eff6ff;
   border-bottom-color: #2563eb;
 }
 
@@ -74,7 +77,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #f5f7fa;
+  background: var(--theme-bg-solid, #f5f7fa);
 }
 
 /* ============ HEADER ============ */
@@ -178,7 +181,7 @@
   flex: 1;
   padding: 32px;
   overflow-y: auto;
-  background: #f5f7fa;
+  background: var(--theme-bg-solid, #f5f7fa);
 }
 
 /* ============ METRICS GRID ============ */
@@ -275,6 +278,62 @@
   background: #eff6ff;
   border-left-color: #2563eb;
   color: #1e3a8a;
+}
+
+.low-stock-items-section {
+  margin-bottom: 32px;
+}
+
+.low-stock-items-section h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 16px;
+}
+
+.low-stock-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.low-stock-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+  border-left: 4px solid #f97316;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.low-stock-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+}
+
+.low-stock-card h4 {
+  margin-bottom: 10px;
+  font-size: 16px;
+  color: #1e293b;
+}
+
+.low-stock-card p {
+  margin: 0 0 8px 0;
+  color: #334155;
+  font-weight: 500;
+}
+
+.low-stock-card small {
+  color: #64748b;
+}
+
+.low-stock-empty {
+  padding: 24px;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #475569;
+  grid-column: 1 / -1;
+  text-align: center;
 }
 
 /* ============ SYSTEM HEALTH ============ */
@@ -601,6 +660,142 @@
   margin-bottom: 14px;
 }
 
+.edit-medicine-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+  margin-bottom: 24px;
+}
+
+.edit-medicine-card h4 {
+  color: #0f172a;
+  margin-bottom: 14px;
+}
+
+.edit-medicine-card input,
+.edit-medicine-card textarea {
+  width: 100%;
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.edit-user-dropdown {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 300px;
+  max-width: 400px;
+  animation: dropdownSlideDown 0.25s ease-out;
+}
+
+@keyframes dropdownSlideDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -55%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.dropdown-header {
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 12px 12px 0 0;
+}
+
+.dropdown-header h5 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.dropdown-content {
+  padding: 16px;
+}
+
+.dropdown-content label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.dropdown-content select {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.dropdown-content select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.dropdown-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 0 0 12px 12px;
+  justify-content: flex-end;
+}
+
+.btn-save,
+.btn-cancel {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-save {
+  background: #10b981;
+  color: white;
+}
+
+.btn-save:hover:not(:disabled) {
+  background: #059669;
+}
+
+.btn-save:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.btn-cancel {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.btn-cancel:hover {
+  background: #d1d5db;
+}
+
 .form-grid {
   display: grid;
   gap: 16px;
@@ -674,7 +869,7 @@
 }
 
 .btn-edit {
-  background: #0ea5e9;
+  background: var(--theme-primary, #0ea5e9);
   color: white;
   margin-right: 8px;
 }
@@ -687,10 +882,10 @@
 .form-message {
   margin-bottom: 16px;
   padding: 14px 18px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: var(--theme-primary, #eff6ff);
+  border: 1px solid var(--theme-primary, #bfdbfe);
   border-radius: 10px;
-  color: #1d4ed8;
+  color: var(--theme-primary, #1d4ed8);
 }
 
 .small-note {
@@ -1078,4 +1273,62 @@ html.dark .btn-print,
 html.dark .btn-logout,
 html.dark .btn-retry {
   box-shadow: none;
+}
+
+/* Admin dashboard always defaults to a light theme */
+.admin-container,
+.admin-container .admin-main,
+.admin-container .admin-header,
+.admin-container .health-dropdown,
+.admin-container .metric-card,
+.admin-container .system-health,
+.admin-container .recent-activity,
+.admin-container .management-section,
+.admin-container .form-card,
+.admin-container .table-card,
+.admin-container .alert,
+.admin-container .management-table th,
+.admin-container .management-table td,
+.admin-container .admin-tabs,
+.admin-container .admin-tab,
+.admin-container .form-grid input,
+.admin-container .form-grid select {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.admin-container {
+  background: #f5f7fa !important;
+}
+
+.admin-container .admin-tabs {
+  background: #ffffff !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+.admin-container .admin-tab {
+  color: #64748b !important;
+}
+
+.admin-container .admin-tab.active {
+  color: var(--theme-primary, #2563eb) !important;
+  border-bottom-color: var(--theme-primary, #2563eb) !important;
+}
+
+.admin-container .management-table thead {
+  background: #f8fafc !important;
+}
+
+.admin-container .management-table tbody tr:hover {
+  background: #f1f5f9 !important;
+}
+
+.admin-container .form-grid label {
+  color: #475569 !important;
+}
+
+.admin-container .form-grid input::placeholder,
+.admin-container .form-grid select {
+  color: #64748b !important;
 }

@@ -224,7 +224,7 @@ const DoctorDashboard: React.FC = () => {
           }}
           onClick={() => setActiveTab("dashboard")}
         >
-          📊 Dashboard
+          Dashboard
         </button>
         <button
           style={{
@@ -233,7 +233,7 @@ const DoctorDashboard: React.FC = () => {
           }}
           onClick={() => setActiveTab("create")}
         >
-          ➕ Create Prescription
+          Create Prescription
         </button>
         <button
           style={{
@@ -242,7 +242,7 @@ const DoctorDashboard: React.FC = () => {
           }}
           onClick={() => setActiveTab("register")}
         >
-          👤 Register Patient
+          Register Patient
         </button>
       </div>
 
@@ -251,29 +251,29 @@ const DoctorDashboard: React.FC = () => {
         <>
       <div style={styles.cards}>
         <div style={styles.card}>
-          <h3>👥 Total Patients</h3>
+          <h3 style={{ fontWeight: 'bold' }}>👥 Total Patients</h3>
           <p style={styles.cardValue}><AnimatedNumber value={totalPatients} /></p>
         </div>
 
         <div style={styles.card}>
-          <h3>📋 Total Prescriptions</h3>
+          <h3 style={{ fontWeight: 'bold' }}>Total Prescriptions</h3>
           <p style={styles.cardValue}><AnimatedNumber value={totalPrescriptions} /></p>
         </div>
 
         <div style={styles.card}>
-          <h3>💊 Low Stock Medicines</h3>
+          <h3 style={{ fontWeight: 'bold' }}>Low Stock Medicines</h3>
           <p style={styles.cardValue}><AnimatedNumber value={lowStockMedicines} /></p>
         </div>
 
         <div style={styles.card}>
-          <h3>📅 Recent Activity</h3>
+          <h3 style={{ fontWeight: 'bold' }}>Recent Activity</h3>
           <p style={styles.cardValue}><AnimatedNumber value={recentPrescriptions.length} /> prescriptions this week</p>
         </div>
       </div>
 
       {/* Recent Prescriptions */}
       <div style={styles.section}>
-        <h2>Recent Prescriptions</h2>
+        <h2 style={{ fontWeight: 'bold' }}>Recent Prescriptions</h2>
         <div style={styles.tableContainer}>
           <table style={styles.table}>
             <thead>
@@ -304,10 +304,16 @@ const DoctorDashboard: React.FC = () => {
                   <td>
                     <span style={{
                       ...styles.statusBadge,
-                      backgroundColor: prescription.status === 'completed' ? '#d4edda' : '#fff3cd',
-                      color: prescription.status === 'completed' ? '#155724' : '#856404'
+                      backgroundColor: prescription.status === 'approved' ? '#dcfce7' : 
+                                       prescription.status === 'pending' ? '#fef3c7' :
+                                       '#fee2e2',
+                      color: prescription.status === 'approved' ? '#166534' : 
+                             prescription.status === 'pending' ? '#92400e' :
+                             '#991b1b'
                     }}>
-                      {prescription.status || 'Active'}
+                      {prescription.status === 'approved' ? '✅ Approved' : 
+                       prescription.status === 'pending' ? '⏳ Pending' : 
+                       'Rejected'}
                     </span>
                   </td>
                 </tr>
@@ -319,7 +325,7 @@ const DoctorDashboard: React.FC = () => {
 
       {/* Recent Patients */}
       <div style={styles.section}>
-        <h2>Recent Patients</h2>
+        <h2 style={{ fontWeight: 'bold' }}>Recent Patients</h2>
         <div style={styles.tableContainer}>
           <table style={styles.table}>
             <thead>
@@ -346,11 +352,11 @@ const DoctorDashboard: React.FC = () => {
 
       {/* Medicine Inventory Alert */}
       <div style={styles.section}>
-        <h2>Medicine Inventory Alerts</h2>
+        <h2 style={{ fontWeight: 'bold' }}>Medicine Inventory Alerts</h2>
         <div style={styles.alertsContainer}>
           {medicines.filter(med => med.quantity < 10).slice(0, 5).map((medicine) => (
             <div key={medicine.id} style={styles.alertCard}>
-              <h4>⚠ {medicine.name}</h4>
+              <h4 style={{ fontWeight: 'bold' }}>⚠ {medicine.name}</h4>
               <p>Only {medicine.quantity} units remaining</p>
               <small>Expires: {new Date(medicine.expiry_date).toLocaleDateString()}</small>
             </div>
@@ -363,7 +369,7 @@ const DoctorDashboard: React.FC = () => {
 
       {/* Charts */}
       <div style={styles.section}>
-        <h2>Prescription Trends</h2>
+        <h2 style={{ fontWeight: 'bold' }}>Prescription Trends</h2>
         <div style={styles.chartContainer}>
           <Line
             data={prescriptionChartData}
@@ -382,29 +388,33 @@ const DoctorDashboard: React.FC = () => {
 
       {/* Create Prescription Tab */}
       {activeTab === "create" && (
-        <PrescriptionForm
-          patients={patients}
-          medicines={medicines}
-          onSuccess={() => {
-            // Refresh data and switch back to dashboard
-            fetchDashboardData(false);
-            setTimeout(() => setActiveTab("dashboard"), 2000);
-          }}
-          onClose={() => setActiveTab("dashboard")}
-          onCreatePatient={() => setActiveTab("register")}
-        />
+        <div style={styles.formContainer}>
+          <PrescriptionForm
+            patients={patients}
+            medicines={medicines}
+            onSuccess={() => {
+              // Refresh data and switch back to dashboard
+              fetchDashboardData(false);
+              setTimeout(() => setActiveTab("dashboard"), 2000);
+            }}
+            onClose={() => setActiveTab("dashboard")}
+            onCreatePatient={() => setActiveTab("register")}
+          />
+        </div>
       )}
 
       {/* Register Patient Tab */}
       {activeTab === "register" && (
-        <PatientRegistrationForm
-          onSuccess={() => {
-            // Refresh patients list after registration
-            fetchDashboardData(false);
-            setTimeout(() => setActiveTab("create"), 2000);
-          }}
-          onClose={() => setActiveTab("create")}
-        />
+        <div style={styles.formContainer}>
+          <PatientRegistrationForm
+            onSuccess={() => {
+              // Refresh patients list after registration
+              fetchDashboardData(false);
+              setTimeout(() => setActiveTab("create"), 2000);
+            }}
+            onClose={() => setActiveTab("create")}
+          />
+        </div>
       )}
 
     </div>
@@ -495,6 +505,15 @@ const styles: { [key: string]: React.CSSProperties } = {
     width: "100%",
     borderCollapse: "collapse",
     marginTop: "15px",
+  },
+  formContainer: {
+    maxWidth: "600px",
+    margin: "0 auto",
+    padding: "20px",
+    background: "#ffffff",
+    borderRadius: "12px",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
+    border: "1px solid #e2e8f0",
   },
   statusBadge: {
     padding: "4px 8px",

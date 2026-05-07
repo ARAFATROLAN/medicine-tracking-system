@@ -11,7 +11,9 @@ class Prescription extends Model {
         'patient_id',
         'doctor_id',
         'date_prescribed',
-        'notes'
+        'notes',
+        'status',
+        'pharmacist_id'
     ];
 
     public function patient() {

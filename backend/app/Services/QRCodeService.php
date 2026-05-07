@@ -20,6 +20,13 @@ class QRCodeService
         $medicine = $seal->medicine;
         
         // QR code payload with all verification information
+        $verifyEndpoint = null;
+        try {
+            $verifyEndpoint = route('api.seal.verify') . '?code=' . urlencode($seal->code);
+        } catch (\Exception $e) {
+            $verifyEndpoint = url('/api/v1/seals/verify') . '?code=' . urlencode($seal->code);
+        }
+
         $payload = [
             'v' => '1.0',
             'seal_code' => $seal->code,
@@ -30,7 +37,7 @@ class QRCodeService
             'expiry_date' => $medicine->Expiry_Date,
             'batch' => $seal->batch_number,
             'generated_at' => $seal->generated_at->toIso8601String(),
-            'verify_endpoint' => route('api.seal.verify') . '?code=' . urlencode($seal->code),
+            'verify_endpoint' => $verifyEndpoint,
         ];
 
         $qrData = json_encode($payload);

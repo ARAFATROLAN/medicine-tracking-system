@@ -14,6 +14,7 @@ import {
 } from "chart.js";
 import api from "../Services/api";
 import { MessagePanelContext } from "../layout/DashboardLayout";
+import { NotificationContext } from "../context/NotificationContext";
 import MedicineRegistrationForm from "../components/MedicineRegistrationForm";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -32,6 +33,18 @@ interface Delivery {
   status: string;
   delivery_date: string;
   notes?: string;
+}
+
+interface Prescription {
+  id: number;
+  patient_id: number;
+  patient_name: string;
+  doctor_id: number;
+  doctor_name: string;
+  medicines: Array<{ name: string; quantity: number; dosage: string }>;
+  status: string;
+  notes?: string;
+  created_at: string;
 }
 
 const notificationButtonStyle: React.CSSProperties = {
@@ -53,41 +66,69 @@ const notificationButtonStyle: React.CSSProperties = {
 const PharmacistDashboard: React.FC = () => {
   const name = localStorage.getItem("name") || "Pharmacist";
   const panelContext = useContext(MessagePanelContext);
+  const notification = useContext(NotificationContext);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isInitialFetch, setIsInitialFetch] = useState(true);
-  const [activeTab, setActiveTab] = useState<"inventory" | "register" | "deliveries">("inventory");
+  const [activeTab, setActiveTab] = useState<"inventory" | "register" | "deliveries" | "prescriptions">("inventory");
   const [approvalStatus, setApprovalStatus] = useState<{ [key: number]: string }>({});
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showAllInventory, setShowAllInventory] = useState(false);
+  const [prescriptionPopup, setPrescriptionPopup] = useState<{
+    notificationId: number;
+    prescriptionId: number;
+    message: string;
+  } | null>(null);
+  const [popupLoading, setPopupLoading] = useState(false);
 
   // Fetch function (handles both initial load and refresh)
   const fetchDashboardData = React.useCallback(async (isInitial: boolean = false) => {
     try {
       console.log("PharmacistDashboard: Fetching medicines, deliveries, and notifications...");
       
-      const [medicinesData, deliveriesData, notificationsData] = await Promise.all([
+      const [medicinesData, deliveriesData, prescriptionsData, notificationsData] = await Promise.all([
         api.fetchMedicines(),
         api.fetchDeliveries(),
+        api.fetchPrescriptions().catch(() => ({ data: [] })),
         api.fetchNotifications(1).catch(() => ({ data: [] })),
       ]);
       
       console.log("PharmacistDashboard: Received data", {
         medicinesData,
         deliveriesData,
+        prescriptionsData,
         notificationsData,
       });
 
       // Extract data from responses
       const meds = medicinesData?.data || [];
       const dels = deliveriesData?.data || [];
+      const prescs = prescriptionsData?.data || [];
       const notifs = notificationsData?.data || [];
 
       setMedicines(meds);
       setDeliveries(dels);
+      setPrescriptions(prescs);
       const unread = notifs.filter((n: any) => !n.read_at).length;
       setUnreadCount(unread);
+
+      const pendingPrescriptionNotification = notifs.find(
+        (n: any) => n.type === "prescription" && !n.read_at && n.reference_id
+      );
+      if (pendingPrescriptionNotification) {
+        setPrescriptionPopup({
+          notificationId: pendingPrescriptionNotification.id,
+          prescriptionId: pendingPrescriptionNotification.reference_id,
+          message: pendingPrescriptionNotification.message ||
+            "A new prescription requires your approval.",
+        });
+      } else {
+        setPrescriptionPopup(null);
+      }
+
       setError(null);
       
       // Only set loading to false on initial fetch
@@ -138,6 +179,8 @@ const PharmacistDashboard: React.FC = () => {
   const pendingDeliveries = deliveries.filter(del => del.status === 'pending').length;
 
   // Chart data
+  const inventoryDisplay = showAllInventory ? medicines : medicines.slice(0, 10);
+
   const stockChartData = {
     labels: medicines.slice(0, 10).map(med => med.name.length > 15 ? med.name.substring(0, 15) + '...' : med.name),
     datasets: [
@@ -163,7 +206,7 @@ const PharmacistDashboard: React.FC = () => {
       const newStatus = { ...approvalStatus };
       delete newStatus[deliveryId];
       setApprovalStatus(newStatus);
-      alert("Failed to approve delivery");
+      notification?.notify({ type: "error", message: "Failed to approve delivery" });
     }
   };
 
@@ -178,7 +221,43 @@ const PharmacistDashboard: React.FC = () => {
       const newStatus = { ...approvalStatus };
       delete newStatus[deliveryId];
       setApprovalStatus(newStatus);
-      alert("Failed to reject delivery");
+      notification?.notify({ type: "error", message: "Failed to reject delivery" });
+    }
+  };
+
+  const handleApprovePrescription = async (prescriptionId: number) => {
+    setApprovalStatus(prev => ({ ...prev, [prescriptionId]: "pending" }));
+    try {
+      await api.approvePrescription(prescriptionId);
+      notification?.notify({ type: "success", message: "Prescription approved successfully" });
+      await fetchDashboardData(false);
+      setApprovalStatus(prev => ({ ...prev, [prescriptionId]: "done" }));
+    } catch (err) {
+      console.error("Error approving prescription:", err);
+      const newStatus = { ...approvalStatus };
+      delete newStatus[prescriptionId];
+      setApprovalStatus(newStatus);
+      notification?.notify({ type: "error", message: "Failed to approve prescription" });
+    }
+  };
+
+  const handleApprovePrescriptionPopup = async () => {
+    if (!prescriptionPopup) return;
+    setPopupLoading(true);
+
+    try {
+      await api.approvePrescription(prescriptionPopup.prescriptionId);
+      if (prescriptionPopup.notificationId) {
+        await api.markNotificationRead(prescriptionPopup.notificationId);
+      }
+      notification?.notify({ type: "success", message: "Prescription approved successfully" });
+      await fetchDashboardData(false);
+      setPrescriptionPopup(null);
+    } catch (err) {
+      console.error("Error approving prescription from popup:", err);
+      notification?.notify({ type: "error", message: "Failed to approve prescription" });
+    } finally {
+      setPopupLoading(false);
     }
   };
 
@@ -201,9 +280,52 @@ const PharmacistDashboard: React.FC = () => {
 
   return (
     <div style={styles.container}>
+      {prescriptionPopup && (
+        <div style={styles.popupOverlay}>
+          <div style={styles.popupCard}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px" }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700 }}>Prescription Approval Needed</h2>
+                <p style={{ margin: "12px 0 0", color: "#334155" }}>{prescriptionPopup.message}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPrescriptionPopup(null)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#64748b",
+                  fontSize: "1.25rem",
+                  cursor: "pointer",
+                }}
+                aria-label="Close approval popup"
+              >
+                ×
+              </button>
+            </div>
+            <div style={styles.popupActions}>
+              <button
+                type="button"
+                onClick={handleApprovePrescriptionPopup}
+                disabled={popupLoading}
+                style={styles.popupApproveBtn}
+              >
+                {popupLoading ? "Approving..." : "Approve Prescription"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPrescriptionPopup(null)}
+                style={styles.popupCancelBtn}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div style={styles.banner}>
         <div>
-          <h1>💊 Pharmacist Dashboard</h1>
+          <h1>Pharmacist Dashboard</h1>
           <p>Welcome {name}</p>
         </div>
         <button
@@ -239,7 +361,7 @@ const PharmacistDashboard: React.FC = () => {
           }}
           onClick={() => setActiveTab("inventory")}
         >
-          📦 View Inventory
+          View Inventory
         </button>
         <button
           style={{
@@ -248,7 +370,7 @@ const PharmacistDashboard: React.FC = () => {
           }}
           onClick={() => setActiveTab("register")}
         >
-          ➕ Register Medicine
+          Register Medicine
         </button>
         <button
           style={{
@@ -257,7 +379,16 @@ const PharmacistDashboard: React.FC = () => {
           }}
           onClick={() => setActiveTab("deliveries")}
         >
-          🚚 Manage Deliveries
+          Manage Deliveries
+        </button>
+        <button
+          style={{
+            ...styles.tabButton,
+            ...(activeTab === "prescriptions" ? styles.tabButtonActive : styles.tabButtonInactive),
+          }}
+          onClick={() => setActiveTab("prescriptions")}
+        >
+          Pending Prescriptions
         </button>
       </div>
 
@@ -267,29 +398,48 @@ const PharmacistDashboard: React.FC = () => {
           {/* Stats Cards */}
           <div style={styles.cards}>
         <div style={styles.card}>
-          <h3>📦 Total Medicines</h3>
+          <h3 style={{ fontWeight: 'bold' }}>Total Medicines</h3>
           <p style={styles.cardValue}><AnimatedNumber value={totalMedicines} /></p>
         </div>
 
         <div style={styles.card}>
-          <h3>⚠ Low Stock Alerts</h3>
+          <h3 style={{ fontWeight: 'bold' }}>⚠ Low Stock Alerts</h3>
           <p style={styles.cardValue}><AnimatedNumber value={lowStockMedicines} /></p>
         </div>
 
         <div style={styles.card}>
-          <h3>⏰ Expiring Soon</h3>
+          <h3 style={{ fontWeight: 'bold' }}>Expiring Soon</h3>
           <p style={styles.cardValue}><AnimatedNumber value={expiringSoonMedicines} /></p>
         </div>
 
         <div style={styles.card}>
-          <h3>🚚 Pending Deliveries</h3>
+          <h3 style={{ fontWeight: 'bold' }}>Pending Deliveries</h3>
           <p style={styles.cardValue}><AnimatedNumber value={pendingDeliveries} /></p>
         </div>
       </div>
 
       {/* Medicine Inventory Table */}
       <div style={styles.section}>
-        <h2>Medicine Inventory</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+          <h2 style={{ fontWeight: 'bold', margin: 0 }}>Medicine Inventory</h2>
+          {medicines.length > 10 && (
+            <button
+              type="button"
+              onClick={() => setShowAllInventory((prev) => !prev)}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '9999px',
+                border: '1px solid #3b82f6',
+                background: showAllInventory ? '#eff6ff' : '#3b82f6',
+                color: showAllInventory ? '#1d4ed8' : '#ffffff',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              {showAllInventory ? 'Show Less' : 'View More'}
+            </button>
+          )}
+        </div>
         <div style={styles.tableContainer}>
           <table style={styles.table}>
             <thead>
@@ -301,7 +451,7 @@ const PharmacistDashboard: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {medicines.slice(0, 10).map((medicine, index) => {
+              {inventoryDisplay.map((medicine, index) => {
                 const expiryDate = new Date(medicine.expiry_date);
                 const now = new Date();
                 const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -348,11 +498,11 @@ const PharmacistDashboard: React.FC = () => {
 
       {/* Low Stock Alerts */}
       <div style={styles.section}>
-        <h2>Low Stock Alerts</h2>
+        <h2 style={{ fontWeight: 'bold' }}>Low Stock Alerts</h2>
         <div style={styles.alertsContainer}>
           {medicines.filter(med => med.quantity < 50).slice(0, 6).map((medicine) => (
             <div key={medicine.id} style={styles.alertCard}>
-              <h4>⚠ {medicine.name}</h4>
+              <h4 style={{ fontWeight: 'bold' }}>⚠ {medicine.name}</h4>
               <p>Only {medicine.quantity} units remaining</p>
               <small>Reorder recommended</small>
             </div>
@@ -365,7 +515,7 @@ const PharmacistDashboard: React.FC = () => {
 
       {/* Pending Deliveries */}
       <div style={styles.section}>
-        <h2>Pending Deliveries</h2>
+        <h2 style={{ fontWeight: 'bold' }}>Pending Deliveries</h2>
         <div style={styles.tableContainer}>
           <table style={styles.table}>
             <thead>
@@ -399,11 +549,30 @@ const PharmacistDashboard: React.FC = () => {
             <p style={{ textAlign: "center", color: "#666", padding: "20px" }}>No pending deliveries.</p>
           )}
         </div>
+        {pendingDeliveries > 5 && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+            <button
+              type="button"
+              onClick={() => setActiveTab('deliveries')}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '9999px',
+                border: '1px solid #3b82f6',
+                background: '#3b82f6',
+                color: '#fff',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              View More Pending Deliveries
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Stock Chart */}
       <div style={styles.section}>
-        <h2>Stock Levels Overview</h2>
+        <h2 style={{ fontWeight: 'bold' }}>Stock Levels Overview</h2>
         <div style={styles.chartContainer}>
           <Bar
             data={stockChartData}
@@ -432,12 +601,15 @@ const PharmacistDashboard: React.FC = () => {
       {/* Register Medicine Tab */}
       {activeTab === "register" && (
         <div style={styles.section}>
-          <h2>Register New Medicine</h2>
+          <h2 style={{ fontWeight: 'bold' }}>Register New Medicine</h2>
           <MedicineRegistrationForm
             onSuccess={(sealNumber) => {
               // Refresh data when medicine is registered successfully
               fetchDashboardData(false);
-              alert(`Medicine registered successfully! Seal Number: ${sealNumber}`);
+              notification?.notify({
+                type: "success",
+                message: `Medicine registered successfully! Seal Number: ${sealNumber}`,
+              });
               // Optionally switch back to inventory tab
               setTimeout(() => setActiveTab("inventory"), 2000);
             }}
@@ -452,15 +624,15 @@ const PharmacistDashboard: React.FC = () => {
           {/* Deliveries Stats */}
           <div style={styles.cards}>
             <div style={styles.card}>
-              <h3>📋 Total Deliveries</h3>
+              <h3>Total Deliveries</h3>
               <p style={styles.cardValue}>{deliveries.length}</p>
             </div>
             <div style={styles.card}>
-              <h3>⏳ Pending</h3>
+              <h3>Pending</h3>
               <p style={styles.cardValue}>{deliveries.filter(d => d.status === 'pending').length}</p>
             </div>
             <div style={styles.card}>
-              <h3>✅ Approved</h3>
+              <h3>Approved</h3>
               <p style={styles.cardValue}>{deliveries.filter(d => d.status === 'approved').length}</p>
             </div>
             <div style={styles.card}>
@@ -471,7 +643,7 @@ const PharmacistDashboard: React.FC = () => {
 
           {/* All Deliveries Table with Actions */}
           <div style={styles.section}>
-            <h2>All Deliveries</h2>
+            <h2 style={{ fontWeight: 'bold' }}>All Deliveries</h2>
             <div style={styles.tableContainer}>
               <table style={styles.table}>
                 <thead>
@@ -537,6 +709,91 @@ const PharmacistDashboard: React.FC = () => {
         </>
       )}
 
+      {activeTab === "prescriptions" && (
+        <>
+          {/* Prescriptions Stats */}
+          <div style={styles.cards}>
+            <div style={styles.card}>
+              <h3>Total Prescriptions</h3>
+              <p style={styles.cardValue}>{prescriptions.length}</p>
+            </div>
+            <div style={styles.card}>
+              <h3>Pending</h3>
+              <p style={styles.cardValue}>{prescriptions.filter(p => p.status === 'pending').length}</p>
+            </div>
+            <div style={styles.card}>
+              <h3>Approved</h3>
+              <p style={styles.cardValue}>{prescriptions.filter(p => p.status === 'approved').length}</p>
+            </div>
+          </div>
+
+          {/* Pending Prescriptions Table */}
+          <div style={styles.section}>
+            <h2 style={{ fontWeight: 'bold' }}>Pending Prescriptions</h2>
+            <div style={styles.tableContainer}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Patient Name</th>
+                    <th>Doctor Name</th>
+                    <th>Medicines</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {prescriptions.map((prescription) => (
+                    <tr key={prescription.id}>
+                      <td>#{prescription.id}</td>
+                      <td>{prescription.patient_name}</td>
+                      <td>{prescription.doctor_name}</td>
+                      <td>
+                        {prescription.medicines?.map((med, idx) => (
+                          <span key={idx}>
+                            {med.name} ({med.quantity}){idx < prescription.medicines.length - 1 ? ", " : ""}
+                          </span>
+                        ))}
+                      </td>
+                      <td>
+                        <span style={{
+                          ...styles.statusBadge,
+                          backgroundColor: prescription.status === "pending" ? "#f59e0b" : 
+                                           prescription.status === "approved" ? "#22c55e" : 
+                                           "#ef4444",
+                          color: "white"
+                        }}>
+                          {prescription.status}
+                        </span>
+                      </td>
+                      <td>{new Date(prescription.created_at).toLocaleDateString()}</td>
+                      <td>
+                        {prescription.status === "pending" && (
+                          <button
+                            style={{ ...styles.actionBtn, backgroundColor: "#22c55e" }}
+                            onClick={() => handleApprovePrescription(prescription.id)}
+                            disabled={approvalStatus[prescription.id] === "pending"}
+                          >
+                            {approvalStatus[prescription.id] === "pending" ? "..." : "Approve"}
+                          </button>
+                        )}
+                        {prescription.status !== "pending" && (
+                          <span style={{ color: "#666" }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {prescriptions.length === 0 && (
+                <p style={{ textAlign: "center", color: "#666", padding: "20px" }}>No prescriptions.</p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
     </div>
   );
 };
@@ -568,7 +825,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   tabButton: {
     padding: "12px 24px",
-    fontSize: "1rem",
+    fontSize: "2rem",
     border: "none",
     cursor: "pointer",
     borderRadius: "8px 8px 0 0",
@@ -685,5 +942,48 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "0.85rem",
     fontWeight: "bold",
     transition: "opacity 0.2s",
+  },
+  popupOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(15, 23, 42, 0.55)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
+    padding: "20px",
+  },
+  popupCard: {
+    width: "min(560px, 100%)",
+    background: "white",
+    borderRadius: "24px",
+    padding: "28px",
+    boxShadow: "0 28px 60px rgba(15, 23, 42, 0.18)",
+    border: "1px solid rgba(148, 163, 184, 0.22)",
+  },
+  popupActions: {
+    marginTop: "24px",
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: "12px",
+    flexWrap: "wrap",
+  },
+  popupApproveBtn: {
+    background: "#16a34a",
+    color: "white",
+    border: "none",
+    padding: "12px 22px",
+    borderRadius: "9999px",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  popupCancelBtn: {
+    background: "#f8fafc",
+    color: "#334155",
+    border: "1px solid #cbd5e1",
+    padding: "12px 22px",
+    borderRadius: "9999px",
+    fontWeight: 600,
+    cursor: "pointer",
   },
 };

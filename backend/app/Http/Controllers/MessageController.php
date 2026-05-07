@@ -131,4 +131,64 @@ class MessageController extends Controller
 
         return collect();
     }
+
+    /**
+     * Get unread message count for authenticated user
+     */
+    public function unreadCount(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['status' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        $roles = $user->roles()->pluck('name')->map(fn ($name) => strtolower($name))->toArray();
+        $recipientRoles = ['all'];
+
+        if (in_array('doctor', $roles)) {
+            $recipientRoles[] = 'doctors';
+        }
+        if (in_array('pharmacist', $roles)) {
+            $recipientRoles[] = 'pharmacists';
+        }
+        if (in_array('admin', $roles) || in_array('super_admin', $roles)) {
+            $recipientRoles[] = 'admins';
+        }
+
+        $unreadCount = Message::where(function ($query) use ($recipientRoles, $user) {
+                $query->whereIn('recipient_role', $recipientRoles)
+                      ->orWhere('sender_id', $user->id);
+            })
+            ->where('sender_id', '!=', $user->id)
+            ->whereNull('read_at')
+            ->count();
+
+        return response()->json([
+            'status' => true,
+            'data' => [
+                'unread_count' => $unreadCount,
+            ]
+        ], 200);
+    }
+
+    /**
+     * Mark message as read
+     */
+    public function markAsRead(Request $request, $id)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['status' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        $message = Message::findOrFail($id);
+        $message->update(['read_at' => now()]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Message marked as read',
+            'data' => $message
+        ], 200);
+    }
 }
+

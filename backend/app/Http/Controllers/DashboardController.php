@@ -162,6 +162,66 @@ class DashboardController extends Controller
     }
 
     /**
+     * Update user role (admin only)
+     */
+    public function updateUser(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'specialisation' => 'required|string|in:Admin,Doctor,Pharmacist',
+        ]);
+
+        try {
+            // Update user's specialisation
+            $user->update([
+                'specialisation' => $validated['specialisation']
+            ]);
+
+            // Update role relationship
+            $roleName = match(strtolower($validated['specialisation'])) {
+                'admin' => 'Admin',
+                'doctor' => 'Doctor',
+                'pharmacist' => 'Pharmacist',
+                default => 'Doctor'
+            };
+
+            $role = Role::firstOrCreate(['name' => $roleName]);
+
+            // Remove existing role assignments
+            DB::table('user_roles')->where('user_id', $user->id)->delete();
+
+            // Assign new role
+            DB::table('user_roles')->insert([
+                'user_id' => $user->id,
+                'role_id' => $role->id,
+            ]);
+
+            ActivityLog::create([
+                'user_id' => auth()->id(),
+                'action' => 'Updated user role: ' . $user->name . ' to ' . $validated['specialisation'],
+                'entity_type' => 'User',
+                'entity_id' => $user->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'User role updated successfully',
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'specialisation' => $user->specialisation,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update user role',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Get medicines with inventory and status
      */
     public function medicines()

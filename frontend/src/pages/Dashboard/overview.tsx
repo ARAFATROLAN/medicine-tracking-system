@@ -21,7 +21,7 @@ export default function Overview() {
       </div>
 
       <div className="bg-white p-6 rounded-2xl shadow-sm border">
-        <h2 className="text-lg font-semibold mb-4">System Status</h2>
+        <h2 className="text-lg font-bold mb-4">System Status</h2>
 
         <div className="flex items-center gap-3 text-green-600">
           <div className="w-3 h-3 bg-green-500 rounded-full"></div>

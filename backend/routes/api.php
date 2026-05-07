@@ -29,6 +29,13 @@ Route::prefix('v1')->group(function () {
         ]);
     });
 
+    Route::post('/test', function () {
+        return response()->json([
+            'status' => 'success',
+            'message' => 'POST works'
+        ]);
+    });
+
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
 
@@ -94,6 +101,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('medicines', MedicineController::class);
         Route::post('medicines/register', [MedicineController::class, 'registerMedicine']);
         Route::apiResource('prescriptions', PrescriptionController::class);
+        Route::post('prescriptions/{id}/approve', [PrescriptionController::class, 'approve']);
         Route::apiResource('deliveries', DeliveryController::class);
         Route::post('deliveries/{id}/approve', [DeliveryController::class, 'approve']);
 
@@ -101,6 +109,8 @@ Route::prefix('v1')->group(function () {
         Route::get('messages', [MessageController::class, 'index']);
         Route::get('messages/{id}', [MessageController::class, 'show']);
         Route::post('messages', [MessageController::class, 'store']);
+        Route::get('messages/unread-count', [MessageController::class, 'unreadCount']);
+        Route::put('messages/{id}/read', [MessageController::class, 'markAsRead']);
 
         // Medicine Monitoring
         Route::get('medicines/low-stock', [MedicineController::class, 'lowStock']);
@@ -110,7 +120,7 @@ Route::prefix('v1')->group(function () {
         // Seal Management
         Route::prefix('seals')->group(function () {
             Route::post('/generate', [SealController::class, 'generateSeal']); // Generate seal for medicine
-            Route::post('/verify', [SealController::class, 'verifySeal']); // Verify seal authenticity
+            Route::post('/verify', [SealController::class, 'verifySeal'])->name('api.seal.verify'); // Verify seal authenticity
             Route::post('/detect-tampering', [SealController::class, 'detectTampering']); // Detect tampering attempts
             Route::get('/{sealCode}', [SealController::class, 'getSealDetails']); // Get seal details
             Route::get('/{sealCode}/qr-code', [SealController::class, 'getQRCode']); // Get QR code

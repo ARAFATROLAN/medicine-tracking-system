@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { NotificationContext } from '../context/NotificationContext';
 import {
   FaBars,
   FaTimes,
@@ -8,9 +9,22 @@ import {
   FaSun,
   FaMoon,
   FaKey,
-  FaEnvelope
+  FaEnvelope,
+  FaPalette
 } from 'react-icons/fa';
 import api from '../Services/api';
+
+// Theme colors available for selection
+const THEME_COLORS = [
+  { name: 'Blue', primary: '#2563eb', hex: '#2563eb' },
+  { name: 'Green', primary: '#10b981', hex: '#10b981' },
+  { name: 'Purple', primary: '#8b5cf6', hex: '#8b5cf6' },
+  { name: 'Red', primary: '#ef4444', hex: '#ef4444' },
+  { name: 'Orange', primary: '#f97316', hex: '#f97316' },
+  { name: 'Pink', primary: '#ec4899', hex: '#ec4899' },
+  { name: 'Teal', primary: '#14b8a6', hex: '#14b8a6' },
+  { name: 'Indigo', primary: '#6366f1', hex: '#6366f1' },
+];
 
 interface LeftSidebarProps {
   isOpen: boolean;
@@ -22,6 +36,8 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, onToggle, onMessagesC
   const navigate = useNavigate();
   const [darkMode, setDarkMode] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showAppearanceModal, setShowAppearanceModal] = useState(false);
+  const [themeColor, setThemeColor] = useState('#2563eb'); // Default blue
   const [passwordData, setPasswordData] = useState({
     current_password: '',
     password: '',
@@ -29,6 +45,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, onToggle, onMessagesC
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const notification = useContext(NotificationContext);
 
   // Load theme preference
   useEffect(() => {
@@ -39,11 +56,40 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, onToggle, onMessagesC
     document.documentElement.classList.toggle('dark', isDark);
   }, []);
 
+  // Load theme color preference
+  useEffect(() => {
+    const savedColor = localStorage.getItem('themeColor');
+    if (savedColor) {
+      setThemeColor(savedColor);
+      applyThemeColor(savedColor);
+    }
+  }, []);
+
   const toggleTheme = () => {
     const newDarkMode = !darkMode;
     setDarkMode(newDarkMode);
     localStorage.setItem('theme', newDarkMode ? 'dark' : 'light');
     document.documentElement.classList.toggle('dark', newDarkMode);
+  };
+
+  // Apply theme color to CSS variables
+  const applyThemeColor = (color: string) => {
+    // Set primary theme color
+    document.documentElement.style.setProperty('--theme-primary', color);
+    document.documentElement.style.setProperty('--theme-primary-hover', color + 'cc');
+    
+    // Set dashboard background color (lighter version of theme)
+    const bgColor = color + '15'; // 15 = ~8% opacity
+    document.documentElement.style.setProperty('--theme-bg', bgColor);
+    document.documentElement.style.setProperty('--theme-bg-solid', color + '08');
+  };
+
+  // Handle theme color change
+  const handleThemeColorChange = (color: string) => {
+    setThemeColor(color);
+    localStorage.setItem('themeColor', color);
+    applyThemeColor(color);
+    setShowAppearanceModal(false);
   };
 
   const handleLogout = () => {
@@ -64,7 +110,10 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, onToggle, onMessagesC
         password: '',
         password_confirmation: ''
       });
-      alert('Password updated successfully!');
+      notification?.notify({
+        type: 'success',
+        message: 'Password updated successfully!',
+      });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to update password');
     } finally {
@@ -122,6 +171,21 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, onToggle, onMessagesC
               <span className="text-gray-700 dark:text-gray-300">
                 {darkMode ? 'Light Mode' : 'Dark Mode'}
               </span>
+            </button>
+
+            {/* Appearance - Theme Color */}
+            <button
+              onClick={() => setShowAppearanceModal(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <FaPalette className="text-purple-500" style={{ color: themeColor }} />
+              <span className="text-gray-700 dark:text-gray-300">
+                Appearance
+              </span>
+              <span 
+                className="ml-auto w-4 h-4 rounded-full border border-gray-300 dark:border-gray-600"
+                style={{ backgroundColor: themeColor }}
+              />
             </button>
 
             {/* Messages */}
@@ -259,6 +323,52 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, onToggle, onMessagesC
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Appearance Modal - Theme Color Picker */}
+      {showAppearanceModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-gray-200">
+              Choose Theme Color
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Select a color to customize your dashboard appearance. This will apply to all users.
+            </p>
+            
+            <div className="grid grid-cols-4 gap-3">
+              {THEME_COLORS.map((color) => (
+                <button
+                  key={color.name}
+                  onClick={() => handleThemeColorChange(color.hex)}
+                  className={`flex flex-col items-center p-3 rounded-lg border-2 transition-all ${
+                    themeColor === color.hex
+                      ? 'border-gray-800 dark:border-gray-200 scale-105'
+                      : 'border-transparent hover:border-gray-300 dark:hover:border-gray-600'
+                  }`}
+                >
+                  <div
+                    className="w-10 h-10 rounded-full shadow-md mb-2"
+                    style={{ backgroundColor: color.hex }}
+                  />
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {color.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-3 pt-4 mt-4">
+              <button
+                type="button"
+                onClick={() => setShowAppearanceModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -25,12 +25,21 @@ export const authService = {
   ): Promise<{ user: User; access_token: string }> => {
     const res = await fetch(`${API_URL}/register`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, contact, specialisation }),
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        contact,
+        specialisation,
+      }),
     });
 
     if (!res.ok) {
-      const err = await res.json();
+      const err = await res.json().catch(() => ({ message: 'Registration failed' }));
       throw err;
     }
 
@@ -50,7 +59,10 @@ export const authService = {
   ): Promise<{ user: User; access_token: string }> => {
     const res = await fetch(`${API_URL}/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
       body: JSON.stringify({ email, password }),
     });
 
@@ -78,6 +90,7 @@ export const authService = {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
+        Accept: 'application/json',
       },
     });
 
@@ -99,6 +112,7 @@ export const authService = {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
+          Accept: 'application/json',
         },
       });
 

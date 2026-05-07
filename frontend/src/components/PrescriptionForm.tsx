@@ -150,6 +150,24 @@ const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
         setSelectedMedicines([]);
         setNotes("");
 
+        // Send message to pharmacists about the new prescription
+        try {
+          const medicineNames = selectedMedicines
+            .map((med) => {
+              const medName = medicines.find((m) => m.id === med.id)?.name || `Medicine ${med.id}`;
+              return medName;
+            })
+            .join(", ");
+
+          await api.sendMessage({
+            recipient_role: "pharmacists",
+            body: `New prescription created: Patient requires ${medicineNames}. Notes: ${notes || "None"}`,
+          });
+        } catch (msgErr) {
+          console.error("Failed to send message to pharmacists:", msgErr);
+          // Don't show error to user as prescription was already created
+        }
+
         setTimeout(() => {
           onSuccess?.(response.data.id);
         }, 1500);
@@ -197,156 +215,172 @@ const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
       )}
 
       <form onSubmit={handleSubmit}>
-        {/* Patient Selection */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>
-            Patient <span style={styles.required}>*</span>
-            <span style={styles.registerLink} onClick={onCreatePatient}>
-              {onCreatePatient ? " (or register new)" : ""}
-            </span>
-          </label>
-          <div style={styles.searchContainer}>
-            <input
-              type="text"
-              value={patientSearchText}
-              onChange={(e) => handlePatientSearch(e.target.value)}
-              placeholder="Search patient by name or email..."
-              style={styles.searchInput}
-              disabled={loading}
-              onFocus={() => patientSearchText && setShowPatientList(true)}
-            />
-            {showPatientList && filteredPatients.length > 0 && (
-              <div style={styles.patientDropdown}>
-                {filteredPatients.map((patient) => (
-                  <div
-                    key={patient.id}
-                    style={styles.patientOption}
-                    onClick={() => handlePatientSelect(patient.id, patient.name)}
-                  >
-                    <strong>ID: {patient.id}</strong> - {patient.name}
-                    <br />
-                    <small>{patient.email}</small>
-                  </div>
-                ))}
-              </div>
-            )}
-            {showPatientList && filteredPatients.length === 0 && (
-              <div style={styles.noResults}>
-                <p>No patients found</p>
-                {onCreatePatient && (
-                  <button
-                    type="button"
-                    onClick={onCreatePatient}
-                    style={styles.createPatientBtn}
-                  >
-                    + Create New Patient
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Medicines Section */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>
-            Medicines <span style={styles.required}>*</span>
-          </label>
-          <div style={styles.medicinesContainer}>
-            {selectedMedicines.length === 0 ? (
-              <p style={{ color: "#999" }}>No medicines added yet</p>
-            ) : (
-              <table style={styles.medicinesTable}>
-                <thead>
-                  <tr>
-                    <th>Medicine</th>
-                    <th>Quantity</th>
-                    <th>Dosage</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedMedicines.map((med, index) => (
-                    <tr key={index}>
-                      <td>
-                        <select
-                          value={med.id}
-                          onChange={(e) =>
-                            handleMedicineChange(index, "id", parseInt(e.target.value))
-                          }
-                          style={styles.tableSelect}
-                          disabled={loading}
+        <table style={styles.formTable}>
+          <tbody>
+            {/* Patient Selection */}
+            <tr>
+              <td style={styles.labelCell}>
+                <label style={styles.label}>
+                  Patient <span style={styles.required}>*</span>
+                  <span style={styles.registerLink} onClick={onCreatePatient}>
+                    {onCreatePatient ? " (or register new)" : ""}
+                  </span>
+                </label>
+              </td>
+              <td style={styles.inputCell}>
+                <div style={styles.searchContainer}>
+                  <input
+                    type="text"
+                    value={patientSearchText}
+                    onChange={(e) => handlePatientSearch(e.target.value)}
+                    placeholder="Search patient by name or email..."
+                    style={styles.searchInput}
+                    disabled={loading}
+                    onFocus={() => patientSearchText && setShowPatientList(true)}
+                  />
+                  {showPatientList && filteredPatients.length > 0 && (
+                    <div style={styles.patientDropdown}>
+                      {filteredPatients.map((patient) => (
+                        <div
+                          key={patient.id}
+                          style={styles.patientOption}
+                          onClick={() => handlePatientSelect(patient.id, patient.name)}
                         >
-                          <option value={0}>-- Select --</option>
-                          {medicines.map((medicine) => (
-                            <option key={medicine.id} value={medicine.id}>
-                              {medicine.name}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          min="1"
-                          value={med.quantity}
-                          onChange={(e) =>
-                            handleMedicineChange(index, "quantity", e.target.value)
-                          }
-                          style={styles.tableInput}
-                          disabled={loading}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="text"
-                          placeholder="e.g., 2 tablets per day"
-                          value={med.dosage}
-                          onChange={(e) =>
-                            handleMedicineChange(index, "dosage", e.target.value)
-                          }
-                          style={styles.tableInput}
-                          disabled={loading}
-                        />
-                      </td>
-                      <td>
+                          <strong>ID: {patient.id}</strong> - {patient.name}
+                          <br />
+                          <small>{patient.email}</small>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {showPatientList && filteredPatients.length === 0 && (
+                    <div style={styles.noResults}>
+                      <p>No patients found</p>
+                      {onCreatePatient && (
                         <button
                           type="button"
-                          onClick={() => handleRemoveMedicine(index)}
-                          style={styles.removeBtn}
-                          disabled={loading}
+                          onClick={onCreatePatient}
+                          style={styles.createPatientBtn}
                         >
-                          ✕
+                          + Create New Patient
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            <button
-              type="button"
-              onClick={handleAddMedicine}
-              style={styles.addMedicineBtn}
-              disabled={loading}
-            >
-              + Add Medicine
-            </button>
-          </div>
-        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </td>
+            </tr>
 
-        {/* Notes */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Additional Notes</label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Enter any additional instructions or notes..."
-            style={styles.textarea}
-            rows={4}
-            disabled={loading}
-          />
-        </div>
+            {/* Medicines Section */}
+            <tr>
+              <td style={styles.labelCell}>
+                <label style={styles.label}>
+                  Medicines <span style={styles.required}>*</span>
+                </label>
+              </td>
+              <td style={styles.inputCell}>
+                <div style={styles.medicinesContainer}>
+                  {selectedMedicines.length === 0 ? (
+                    <p style={{ color: "#999" }}>No medicines added yet</p>
+                  ) : (
+                    <table style={styles.medicinesTable}>
+                      <thead>
+                        <tr>
+                          <th>Medicine</th>
+                          <th>Quantity</th>
+                          <th>Dosage</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedMedicines.map((med, index) => (
+                          <tr key={index}>
+                            <td>
+                              <select
+                                value={med.id}
+                                onChange={(e) =>
+                                  handleMedicineChange(index, "id", parseInt(e.target.value))
+                                }
+                                style={styles.tableSelect}
+                                disabled={loading}
+                              >
+                                <option value={0}>-- Select --</option>
+                                {medicines.map((medicine) => (
+                                  <option key={medicine.id} value={medicine.id}>
+                                    {medicine.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                min="1"
+                                value={med.quantity}
+                                onChange={(e) =>
+                                  handleMedicineChange(index, "quantity", e.target.value)
+                                }
+                                style={styles.tableInput}
+                                disabled={loading}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                placeholder="e.g., 2 tablets per day"
+                                value={med.dosage}
+                                onChange={(e) =>
+                                  handleMedicineChange(index, "dosage", e.target.value)
+                                }
+                                style={styles.tableInput}
+                                disabled={loading}
+                              />
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveMedicine(index)}
+                                style={styles.removeBtn}
+                                disabled={loading}
+                              >
+                                ✕
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleAddMedicine}
+                    style={styles.addMedicineBtn}
+                    disabled={loading}
+                  >
+                    + Add Medicine
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+            {/* Notes */}
+            <tr>
+              <td style={styles.labelCell}>
+                <label style={styles.label}>Additional Notes</label>
+              </td>
+              <td style={styles.inputCell}>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Enter any additional instructions or notes..."
+                  style={styles.textarea}
+                  rows={4}
+                  disabled={loading}
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
         {/* Buttons */}
         <div style={styles.buttonGroup}>
@@ -382,6 +416,21 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: "12px",
     border: "1px solid #e5e7eb",
     marginBottom: "20px",
+  },
+  formTable: {
+    width: "100%",
+    borderCollapse: "collapse",
+    marginBottom: "20px",
+  },
+  labelCell: {
+    padding: "12px 15px 12px 0",
+    textAlign: "right",
+    width: "30%",
+    verticalAlign: "top",
+  },
+  inputCell: {
+    padding: "12px 0",
+    width: "70%",
   },
   formGroup: {
     marginBottom: "20px",

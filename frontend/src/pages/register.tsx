@@ -86,7 +86,7 @@ const Register: React.FC = () => {
 
       <div style={styles.mainContent}>
         <div style={styles.registerCard}>
-          <h2 style={styles.title}>Create an Account</h2>
+          <h2 style={{...styles.title, fontWeight: 'bold'}}>Create an Account</h2>
 
           {registerError && (
             <div style={styles.errorMessage}>{registerError}</div>

@@ -21,27 +21,44 @@ const Login: React.FC = () => {
       const response = await api.loginUser(email, password);
       const token = response.access_token;
       const user = response.user;
+      const userRole = user.specialisation || (user.roles?.[0] ?? "");
 
       localStorage.setItem("token", token);
-      localStorage.setItem("role", user.specialisation);
+      localStorage.setItem("role", userRole);
       localStorage.setItem("roles", JSON.stringify(user.roles || []));
-      localStorage.setItem("name", user.name);
+      localStorage.setItem("name", user.name || "");
 
-      switch (user.specialisation) {
-        case "Doctor":
+      switch (userRole.toLowerCase()) {
+        case "doctor":
           navigate("/dashboard/doctor");
           break;
-        case "Pharmacist":
+        case "pharmacist":
           navigate("/dashboard/pharmacist");
           break;
-        case "Admin":
+        case "admin":
           navigate("/dashboard/admin");
           break;
         default:
           navigate("/dashboard");
       }
     } catch (error: any) {
-      setLoginError(error.response?.data?.message || "Login failed");
+      console.error("Login error:", error);
+      let loginErrorMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.errors?.[0] ||
+        error?.message ||
+        "Login failed";
+
+      if (
+        error?.code === "ECONNABORTED" ||
+        /timeout/i.test(error?.message || "") ||
+        (error?.request && !error?.response)
+      ) {
+        loginErrorMessage =
+          "Unable to reach backend. Make sure the API server is running at http://localhost:8000.";
+      }
+
+      setLoginError(loginErrorMessage);
     } finally {
       setLoading(false);
     }
@@ -52,7 +69,7 @@ const Login: React.FC = () => {
       <div style={styles.overlay}></div>
       <div style={styles.mainContent}>
         <div style={styles.loginCard}>
-          <h2 style={styles.title}>Login</h2>
+          <h2 style={{...styles.title, fontWeight: 'bold'}}>Login</h2>
 
           {loginError && <div style={styles.errorMessage}>{loginError}</div>}
 

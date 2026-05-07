@@ -7,6 +7,7 @@ import UserRegistrationForm from "../components/UserRegistrationForm";
 import VehicleRegistration from "./Admin/VehicleRegistration";
 import VehicleTracking from "./Admin/VehicleTracking";
 import { MessagePanelContext } from "../layout/DashboardLayout";
+import { NotificationContext } from "../context/NotificationContext";
 import "./AdminDashboard.css";
 
 // ============ TYPES ============
@@ -34,6 +35,24 @@ interface Management {
   activeTab: "overview" | "users" | "medicines" | "prescriptions" | "deliveries" | "inventory" | "hospitals" | "vehicles";
 }
 
+interface Medicine {
+  id: number;
+  name: string;
+  quantity: number;
+  expiry_date: string;
+}
+
+interface InventoryItem {
+  id: number;
+  medicine_id: number;
+  quantity: number;
+  expiry_date: string;
+  location?: string;
+  medicine?: {
+    name?: string;
+  };
+}
+
 // ============ MAIN COMPONENT ============
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -44,7 +63,12 @@ const AdminDashboard: React.FC = () => {
   const [management, setManagement] = useState<Management>({
     activeTab: "overview",
   });
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [showAllActivities, setShowAllActivities] = useState(false);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState<string | null>(null);
   const [showVehicleRegistration, setShowVehicleRegistration] = useState(false);
   const [showVehicleTracking, setShowVehicleTracking] = useState(false);
   const [showHealthDropdown, setShowHealthDropdown] = useState(false);
@@ -56,6 +80,8 @@ const AdminDashboard: React.FC = () => {
 
   const overallHealth =
     health?.database_status === "healthy" && health?.api_status === "healthy";
+
+  const lowStockItems = medicines.filter((med) => med.quantity < 50);
 
   // ============ CHECK ADMIN ROLE ============
   useEffect(() => {
@@ -83,15 +109,38 @@ const AdminDashboard: React.FC = () => {
     console.log("✅ User has admin role - allowing access");
   }, [navigate]);
 
+  const fetchActivityLogs = useCallback(async (page = 1) => {
+    setActivityLoading(true);
+    setActivityError(null);
+
+    try {
+      const data = await api.fetchActivityLogs(page);
+      setActivityLogs(data.data || data);
+    } catch (err: any) {
+      console.error("Failed to fetch activity logs:", err);
+      setActivityError(err.response?.data?.message || err.message || "Failed to load activity logs");
+    } finally {
+      setActivityLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showAllActivities && activityLogs.length === 0) {
+      fetchActivityLogs(1);
+    }
+  }, [showAllActivities, activityLogs.length, fetchActivityLogs]);
+
   // ============ FETCH DATA ============
   const fetchStats = useCallback(async () => {
     setError(null);
     try {
-      const [statsData, notificationsData] = await Promise.all([
+      const [statsData, medicinesData, notificationsData] = await Promise.all([
         api.fetchDashboardStats(),
+        api.fetchMedicines().catch(() => ({ data: [] })),
         api.fetchNotifications(1).catch(() => ({ data: [] })),
       ]);
       setStats(statsData);
+      setMedicines(medicinesData?.data || []);
       const notifs = notificationsData?.data || [];
       const unread = notifs.filter((n: any) => !n.read_at).length;
       setUnreadCount(unread);
@@ -280,22 +329,22 @@ const AdminDashboard: React.FC = () => {
                   <HealthCard
                     title="Database"
                     status={health?.database_status || "unknown"}
-                    icon="🗄️"
+                    icon=""
                   />
                   <HealthCard
                     title="API"
                     status={health?.api_status || "unknown"}
-                    icon="🔌"
+                    icon=" "
                   />
                   <ProgressCard
                     title="Disk Usage"
                     value={animatedDiskUsage}
-                    icon="💾"
+                    icon=" "
                   />
                   <ProgressCard
                     title="Memory Usage"
                     value={animatedMemoryUsage}
-                    icon="🧠"
+                    icon=" "
                   />
                 </div>
               </div>
@@ -309,49 +358,49 @@ const AdminDashboard: React.FC = () => {
             className={`admin-tab ${management.activeTab === "overview" ? "active" : ""}`}
             onClick={() => setManagement({ ...management, activeTab: "overview" })}
           >
-            📊 Overview
+            Overview
           </button>
           <button
             className={`admin-tab ${management.activeTab === "users" ? "active" : ""}`}
             onClick={() => setManagement({ ...management, activeTab: "users" })}
           >
-            👥 Users
+            Users
           </button>
           <button
             className={`admin-tab ${management.activeTab === "medicines" ? "active" : ""}`}
             onClick={() => setManagement({ ...management, activeTab: "medicines" })}
           >
-            💊 Medicines
+            Medicines
           </button>
           <button
             className={`admin-tab ${management.activeTab === "prescriptions" ? "active" : ""}`}
             onClick={() => setManagement({ ...management, activeTab: "prescriptions" })}
           >
-            📋 Prescriptions
+            Prescriptions
           </button>
           <button
             className={`admin-tab ${management.activeTab === "deliveries" ? "active" : ""}`}
             onClick={() => setManagement({ ...management, activeTab: "deliveries" })}
           >
-            🚚 Deliveries
+             Deliveries
           </button>
           <button
             className={`admin-tab ${management.activeTab === "inventory" ? "active" : ""}`}
             onClick={() => setManagement({ ...management, activeTab: "inventory" })}
           >
-            📦 Inventory
+            Inventory
           </button>
           <button
             className={`admin-tab ${management.activeTab === "hospitals" ? "active" : ""}`}
             onClick={() => setManagement({ ...management, activeTab: "hospitals" })}
           >
-            🏥 Hospitals
+            Hospitals
           </button>
           <button
             className={`admin-tab ${management.activeTab === "vehicles" ? "active" : ""}`}
             onClick={() => setManagement({ ...management, activeTab: "vehicles" })}
           >
-            🚗 Vehicles
+            Vehicles
           </button>
         </div>
 
@@ -363,47 +412,71 @@ const AdminDashboard: React.FC = () => {
               <MetricCard
                 title="Total Users"
                 value={stats?.total_users || 0}
-                icon="👥"
+                icon=" "
                 color="#3b82f6"
               />
               <MetricCard
                 title="Medicines"
                 value={stats?.total_medicines || 0}
-                icon="💊"
+                icon=" "
                 color="#10b981"
               />
               <MetricCard
                 title="Prescriptions"
                 value={stats?.total_prescriptions || 0}
-                icon="📋"
+                icon=" "
                 color="#f59e0b"
               />
               <MetricCard
                 title="Pending Deliveries"
                 value={stats?.pending_deliveries || 0}
-                icon="🚚"
+                icon=" "
                 color="#ef4444"
                 highlight={stats?.pending_deliveries! > 0}
               />
               <MetricCard
                 title="Low Stock Items"
                 value={stats?.low_stock_medicines || 0}
-                icon="⚠️"
+                icon=" "
                 color="#f97316"
                 highlight={stats?.low_stock_medicines! > 0}
               />
               <MetricCard
                 title="Expired Medicines"
                 value={stats?.expired_medicines || 0}
-                icon="🚫"
+                icon=" "
                 color="#dc2626"
                 highlight={stats?.expired_medicines! > 0}
               />
             </section>
 
+            <section className="low-stock-items-section">
+              <h3 style={{ fontWeight: 'bold' }}>⚠ Low Stock Items</h3>
+              <div className="low-stock-grid">
+                {lowStockItems.length > 0 ? (
+                  lowStockItems.slice(0, 6).map((medicine) => (
+                    <div key={medicine.id} className="low-stock-card">
+                      <h4 style={{ fontWeight: 'bold' }}>⚠ {medicine.name}</h4>
+                      <p>
+                        {medicine.quantity === 0
+                          ? `${medicine.name} is finished`
+                          : `Only ${medicine.quantity} units remaining`
+                        }
+                      </p>
+                      <small>Reorder recommended</small>
+                    </div>
+                  ))
+                ) : (
+                  <div className="low-stock-empty">
+                    <p>No low stock items at this time.</p>
+                  </div>
+                )}
+              </div>
+            </section>
+
             {/* ALERTS SECTION */}
             <section className="alerts-section">
-              <h3>🚨 Critical Alerts</h3>
+              <h3 style={{ fontWeight: 'bold' }}> Critical Alerts</h3>
               <div className="alerts-grid">
                 {stats?.low_stock_medicines! > 0 && (
                   <div className="alert alert-warning">
@@ -426,10 +499,31 @@ const AdminDashboard: React.FC = () => {
 
             {/* RECENT ACTIVITY */}
             <section className="recent-activity">
-              <h3>📝 Recent Activity (Last 10)</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+                <h3>📝 Recent Activity (Last 10)</h3>
+                {stats?.recent_activities && stats.recent_activities.length >= 10 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllActivities((prev) => !prev)}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: '9999px',
+                      border: '1px solid #3b82f6',
+                      background: showAllActivities ? '#eff6ff' : '#3b82f6',
+                      color: showAllActivities ? '#1d4ed8' : '#ffffff',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {showAllActivities ? 'Show Less' : 'View More'}
+                  </button>
+                )}
+              </div>
               <div className="activity-list">
-                {stats?.recent_activities && stats.recent_activities.length > 0 ? (
-                  stats.recent_activities.map((activity, idx) => (
+                {activityLoading ? (
+                  <p>Loading activities...</p>
+                ) : ((showAllActivities ? activityLogs : stats?.recent_activities)?.length ?? 0) > 0 ? (
+                  (showAllActivities ? activityLogs : stats?.recent_activities).map((activity, idx) => (
                     <div key={idx} className="activity-item">
                       <div className="activity-content">
                         <span className="activity-action">{activity.action}</span>
@@ -443,6 +537,7 @@ const AdminDashboard: React.FC = () => {
                 ) : (
                   <p className="no-data">No recent activities</p>
                 )}
+                {activityError && <p style={{ color: '#dc2626', marginTop: '12px' }}>{activityError}</p>}
               </div>
             </section>
           </div>
@@ -584,6 +679,13 @@ const UsersManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [page, _setPage] = useState(1);
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({
+    specialisation: "",
+  });
+  const [updating, setUpdating] = useState(false);
+  const editDropdownRef = useRef<HTMLDivElement | null>(null);
+  const notification = useContext(NotificationContext);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -601,14 +703,50 @@ const UsersManagement: React.FC = () => {
     fetchUsers();
   }, [page]);
 
+  const handleEditClick = (user: any) => {
+    setEditingUser(user);
+    setEditForm({
+      specialisation: user.specialisation || "Doctor",
+    });
+  };
+
+  const handleEditChange = (field: string, value: string) => {
+    setEditForm(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleSaveUser = async () => {
+    if (!editingUser) return;
+
+    setUpdating(true);
+    try {
+      await api.updateUser(editingUser.id, editForm);
+      setEditingUser(null);
+      fetchUsers(); // Refresh the list
+      notification?.notify({ type: "success", message: "User role updated successfully!" });
+    } catch (err: any) {
+      console.error("Failed to update user:", err);
+      notification?.notify({ type: "error", message: "Failed to update user role. Please try again." });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUser(null);
+    setEditForm({ specialisation: "" });
+  };
+
   const handleDelete = async (id: number) => {
     if (window.confirm("Are you sure you want to delete this user?")) {
       try {
         await api.deleteUser(id);
         setUsers(users.filter(u => u.id !== id));
-        alert("User deleted successfully");
+        notification?.notify({ type: "success", message: "User deleted successfully" });
       } catch (err) {
-        alert("Failed to delete user");
+        notification?.notify({ type: "error", message: "Failed to delete user" });
       }
     }
   };
@@ -616,7 +754,7 @@ const UsersManagement: React.FC = () => {
   const handleRegistrationSuccess = () => {
     setShowRegistrationForm(false);
     fetchUsers();
-    alert("User registered successfully!");
+    notification?.notify({ type: "success", message: "User registered successfully!" });
   };
 
   return (
@@ -631,7 +769,7 @@ const UsersManagement: React.FC = () => {
       ) : (
         <>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-            <h3 style={{ margin: 0 }}>👥 User Management</h3>
+            <h3 style={{ fontWeight: 'bold', margin: 0 }}>👥 User Management</h3>
             <button
               style={{
                 padding: "8px 16px",
@@ -649,6 +787,40 @@ const UsersManagement: React.FC = () => {
               ➕ Register New User
             </button>
           </div>
+
+          {editingUser && (
+            <div className="edit-user-dropdown" ref={editDropdownRef}>
+              <div className="dropdown-header">
+                <h5>Edit {editingUser.name}</h5>
+              </div>
+              <div className="dropdown-content">
+                <label>
+                  Role
+                  <select
+                    value={editForm.specialisation}
+                    onChange={(e) => handleEditChange("specialisation", e.target.value)}
+                  >
+                    <option value="Admin">Admin</option>
+                    <option value="Doctor">Doctor</option>
+                    <option value="Pharmacist">Pharmacist</option>
+                  </select>
+                </label>
+              </div>
+              <div className="dropdown-actions">
+                <button
+                  className="btn-save"
+                  type="button"
+                  onClick={handleSaveUser}
+                  disabled={updating}
+                >
+                  {updating ? "Updating..." : "Save"}
+                </button>
+                <button className="btn-cancel" type="button" onClick={handleCancelEdit}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           {loading ? (
             <p>Loading users...</p>
@@ -674,7 +846,13 @@ const UsersManagement: React.FC = () => {
                       <td>{user.contact || "N/A"}</td>
                       <td>{user.specialisation || "User"}</td>
                       <td>
-                        <button className="btn-edit">Edit</button>
+                        <button
+                          className="btn-edit"
+                          onClick={() => handleEditClick(user)}
+                          disabled={editingUser?.id === user.id}
+                        >
+                          {editingUser?.id === user.id ? "Editing..." : "✏️ Edit"}
+                        </button>
                         <button
                           className="btn-delete"
                           onClick={() => handleDelete(user.id)}
@@ -851,7 +1029,7 @@ const HospitalManagement: React.FC = () => {
   return (
     <div className="management-section">
       <div className="section-header">
-        <h3>🏥 Hospital & Branch Device Management</h3>
+        <h3 style={{ fontWeight: 'bold' }}>🏥 Hospital & Branch Device Management</h3>
       </div>
 
       {message && <div className="form-message">{message}</div>}
@@ -859,7 +1037,7 @@ const HospitalManagement: React.FC = () => {
       <div className="management-panel">
         <div className="management-column">
           <div className="form-card">
-            <h4>Register New Hospital</h4>
+            <h4 style={{ fontWeight: 'bold' }}>Register New Hospital</h4>
             <div className="form-grid">
               <label>
                 Name
@@ -904,7 +1082,7 @@ const HospitalManagement: React.FC = () => {
           </div>
 
           <div className="table-card">
-            <h4>Registered Hospitals</h4>
+            <h4 style={{ fontWeight: 'bold' }}>Registered Hospitals</h4>
             {loading ? (
               <p>Loading hospitals...</p>
             ) : hospitals.length === 0 ? (
@@ -947,7 +1125,7 @@ const HospitalManagement: React.FC = () => {
 
         <div className="management-column">
           <div className="form-card">
-            <h4>Register Branch Device</h4>
+            <h4 style={{ fontWeight: 'bold' }}>Register Branch Device</h4>
             <p className="small-note">
               Devices can now be registered independently of hospitals. Optionally assign a device to a hospital.
             </p>
@@ -1010,7 +1188,7 @@ const HospitalManagement: React.FC = () => {
 
           <div className="table-card">
             <div className="table-card-header">
-              <h4>Branch Devices {selectedHospital ? `for ${selectedHospital.name}` : "(All)"}</h4>
+              <h4 style={{ fontWeight: 'bold' }}>Branch Devices {selectedHospital ? `for ${selectedHospital.name}` : "(All)"}</h4>
               <button className="btn-primary" onClick={() => loadDevices()}>
                 View All Devices
               </button>
@@ -1065,20 +1243,30 @@ const MedicinesManagement: React.FC = () => {
   const [medicines, setMedicines] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, _setPage] = useState(1);
+  const [editingMedicine, setEditingMedicine] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    description: "",
+    expiry_date: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const notification = useContext(NotificationContext);
+
+  const fetchMeds = async (pageNumber = page) => {
+    try {
+      const data = await api.fetchMedicines(pageNumber);
+      setMedicines(data.data || data);
+    } catch (err) {
+      console.error("Failed to fetch medicines:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchMeds = async () => {
-      try {
-        const data = await api.fetchMedicines(page);
-        setMedicines(data.data || data);
-      } catch (err) {
-        console.error("Failed to fetch medicines:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMeds();
+    setLoading(true);
+    fetchMeds(page);
   }, [page]);
 
   const getStockStatus = (inventories: any[]) => {
@@ -1086,6 +1274,66 @@ const MedicinesManagement: React.FC = () => {
     if (total < 10) return "critical";
     if (total < 50) return "low";
     return "adequate";
+  };
+
+  const handleEditClick = (med: any) => {
+    setEditingMedicine(med);
+    setEditForm({
+      name: med.name || "",
+      description: med.description || "",
+      expiry_date: med.expiry_date
+        ? new Date(med.expiry_date).toISOString().slice(0, 10)
+        : "",
+    });
+  };
+
+  const handleEditChange = (field: string, value: string) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveMedicine = async () => {
+    if (!editingMedicine) return;
+    setSaving(true);
+
+    try {
+      await api.updateMedicine(editingMedicine.id, {
+        name: editForm.name,
+        description: editForm.description,
+        expiry_date: editForm.expiry_date || null,
+      });
+      await fetchMeds(page);
+      setEditingMedicine(null);
+      notification?.notify({ type: "success", message: "Medicine updated successfully." });
+    } catch (err) {
+      console.error("Failed to update medicine:", err);
+      notification?.notify({ type: "error", message: "Failed to save medicine changes. Please try again." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMedicine(null);
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this medicine? This cannot be undone.")) {
+      return;
+    }
+    setDeletingId(id);
+    try {
+      await api.deleteMedicine(id);
+      setMedicines((prev) => prev.filter((med) => med.id !== id));
+      if (editingMedicine?.id === id) {
+        setEditingMedicine(null);
+      }
+      notification?.notify({ type: "success", message: "Medicine deleted successfully." });
+    } catch (err) {
+      console.error("Failed to delete medicine:", err);
+      notification?.notify({ type: "error", message: "Failed to delete medicine. Please try again." });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handlePrintSeal = async (sealCode: string) => {
@@ -1109,7 +1357,7 @@ const MedicinesManagement: React.FC = () => {
               </head>
               <body>
                 <div class="seal-container">
-                  <h2>Medicine QR Seal</h2>
+                  <h2 style={{ fontWeight: 'bold' }}>Medicine QR Seal</h2>
                   ${response.qr_code_url ? '<div class="qr-code"><img src="' + response.qr_code_url + '" alt="QR Code" /></div>' : '<p>No QR code available.</p>'}
                   <div class="seal-info">
                     <p>Generated: ${new Date().toLocaleString()}</p>
@@ -1130,17 +1378,62 @@ const MedicinesManagement: React.FC = () => {
       }
     } catch (err) {
       console.error("Failed to get printable seal:", err);
-      alert("Failed to generate printable seal. Please try again.");
+      notification?.notify({ type: "error", message: "Failed to generate printable seal. Please try again." });
     }
   };
 
   return (
     <div className="management-section">
-      <h3>💊 Medicine Management</h3>
+      <h3 style={{ fontWeight: 'bold' }}>💊 Medicine Management</h3>
       {loading ? (
         <p>Loading medicines...</p>
       ) : medicines.length > 0 ? (
-        <div className="table-responsive">
+        <>
+          {editingMedicine && (
+            <div className="form-card edit-medicine-card">
+              <h4 style={{ fontWeight: 'bold' }}>Edit Medicine #{editingMedicine.id}</h4>
+              <div className="form-grid">
+                <label>
+                  Name
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => handleEditChange("name", e.target.value)}
+                  />
+                </label>
+                <label>
+                  Description
+                  <textarea
+                    value={editForm.description}
+                    onChange={(e) => handleEditChange("description", e.target.value)}
+                  />
+                </label>
+                <label>
+                  Expiry Date
+                  <input
+                    type="date"
+                    value={editForm.expiry_date}
+                    onChange={(e) => handleEditChange("expiry_date", e.target.value)}
+                  />
+                </label>
+              </div>
+              <div style={{ marginTop: 16, display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <button
+                  className="btn-primary"
+                  type="button"
+                  onClick={handleSaveMedicine}
+                  disabled={saving}
+                >
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
+                <button className="btn-delete" type="button" onClick={handleCancelEdit}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="table-responsive">
           <table className="management-table">
             <thead>
               <tr>
@@ -1189,13 +1482,24 @@ const MedicinesManagement: React.FC = () => {
                   </td>
                   <td>{new Date(med.expiry_date).toLocaleDateString()}</td>
                   <td>
-                    <button className="btn-edit">✏️ Edit</button>
+                    <button className="btn-edit" type="button" onClick={() => handleEditClick(med)}>
+                      ✏️ Edit
+                    </button>
+                    <button
+                      className="btn-delete"
+                      type="button"
+                      onClick={() => handleDelete(med.id)}
+                      disabled={deletingId === med.id}
+                    >
+                      {deletingId === med.id ? "Deleting..." : "🗑️ Delete"}
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        </>
       ) : (
         <p className="no-data">No medicines found</p>
       )}
@@ -1208,6 +1512,7 @@ const PrescriptionsManagement: React.FC = () => {
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, _setPage] = useState(1);
+  const notification = useContext(NotificationContext);
 
   useEffect(() => {
     const fetchPrescriptions = async () => {
@@ -1244,7 +1549,7 @@ const PrescriptionsManagement: React.FC = () => {
               </head>
               <body>
                 <div class="seal-container">
-                  <h2>Prescription QR Seal</h2>
+                  <h2 style={{ fontWeight: 'bold' }}>Prescription QR Seal</h2>
                   ${response.qr_code_url ? '<div class="qr-code"><img src="' + response.qr_code_url + '" alt="QR Code" /></div>' : '<p>No QR code available.</p>'}
                   <div class="seal-info">
                     <p>Generated: ${new Date().toLocaleString()}</p>
@@ -1265,13 +1570,13 @@ const PrescriptionsManagement: React.FC = () => {
       }
     } catch (err) {
       console.error("Failed to get printable seal:", err);
-      alert("Failed to generate printable seal. Please try again.");
+      notification?.notify({ type: "error", message: "Failed to generate printable seal. Please try again." });
     }
   };
 
   return (
     <div className="management-section">
-      <h3>📋 Prescription Management</h3>
+      <h3 style={{ fontWeight: 'bold' }}>📋 Prescription Management</h3>
       {loading ? (
         <p>Loading prescriptions...</p>
       ) : prescriptions.length > 0 ? (
@@ -1342,6 +1647,7 @@ const DeliveriesManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [page, _setPage] = useState(1);
   const [filter, setFilter] = useState("all");
+  const notification = useContext(NotificationContext);
 
   useEffect(() => {
     const fetchDelivs = async () => {
@@ -1367,16 +1673,16 @@ const DeliveriesManagement: React.FC = () => {
           d.id === id ? { ...d, status: newStatus } : d
         )
       );
-      alert("Status updated successfully");
+      notification?.notify({ type: "success", message: "Status updated successfully" });
     } catch (err) {
-      alert("Failed to update status");
+      notification?.notify({ type: "error", message: "Failed to update status" });
     }
   };
 
   return (
     <div className="management-section">
       <div className="section-header">
-        <h3>🚚 Delivery Management</h3>
+        <h3 style={{ fontWeight: 'bold' }}>🚚 Delivery Management</h3>
         <div className="filter-btns">
           <button
             className={filter === "all" ? "active" : ""}
@@ -1460,7 +1766,7 @@ const DeliveriesManagement: React.FC = () => {
 
 // ============ INVENTORY MANAGEMENT COMPONENT ============
 const InventoryManagement: React.FC = () => {
-  const [inventory, setInventory] = useState<any[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, _setPage] = useState(1);
 
@@ -1487,7 +1793,7 @@ const InventoryManagement: React.FC = () => {
 
   return (
     <div className="management-section">
-      <h3>📦 Inventory Management</h3>
+      <h3 style={{ fontWeight: 'bold' }}>📦 Inventory Management</h3>
       {loading ? (
         <p>Loading inventory...</p>
       ) : inventory.length > 0 ? (
@@ -1495,31 +1801,36 @@ const InventoryManagement: React.FC = () => {
           <table className="management-table">
             <thead>
               <tr>
-                <th>Medicine ID</th>
-                <th>Quantity</th>
-                <th>Stock Level</th>
+                <th>Medicine</th>
+                <th>Stock (Units)</th>
+                <th>Status</th>
                 <th>Expiry Date</th>
                 <th>Location</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {inventory.map((item) => (
-                <tr key={item.id}>
-                  <td>{item.medicine_id}</td>
-                  <td>{item.quantity}</td>
-                  <td>
-                    <span className={`stock-badge stock-${getStockColor(item.quantity)}`}>
-                      {getStockColor(item.quantity)}
-                    </span>
-                  </td>
-                  <td>{new Date(item.expiry_date).toLocaleDateString()}</td>
-                  <td>{item.location || "Warehouse"}</td>
-                  <td>
-                    <button className="btn-edit">Edit</button>
-                  </td>
-                </tr>
-              ))}
+              {inventory.map((item) => {
+                const medicineName = item.medicine?.name || `Medicine #${item.medicine_id}`;
+                const stockStatus = getStockColor(item.quantity);
+
+                return (
+                  <tr key={item.id}>
+                    <td>{medicineName}</td>
+                    <td>{item.quantity}</td>
+                    <td>
+                      <span className={`stock-badge stock-${stockStatus}`}>
+                        {stockStatus}
+                      </span>
+                    </td>
+                    <td>{new Date(item.expiry_date).toLocaleDateString()}</td>
+                    <td>{item.location || "Warehouse"}</td>
+                    <td>
+                      <button className="btn-edit">Edit</button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1531,3 +1842,5 @@ const InventoryManagement: React.FC = () => {
 };
 
 export default AdminDashboard;
+
+

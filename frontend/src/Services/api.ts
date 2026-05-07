@@ -3,15 +3,26 @@
 import axios from "axios";
 
 // Base API URL
-const baseURL: string = "http://localhost:8000/api/v1";
+const baseURL: string = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
-// Create axios instance
+// Create axios instance with connection optimization
 const axiosInstance = axios.create({
   baseURL: baseURL,
   headers: {
     "Content-Type": "application/json",
   },
+  // Connection optimization settings
+  timeout: 30000, // 30s timeout
+  withCredentials: false,
 });
+
+// Enable HTTP keep-alive for connection reuse
+axiosInstance.defaults.http = {
+  // Enable keep-alive
+  keepAlive: true,
+  maxSockets: 6,
+  maxSocketsPerHost: 6,
+};
 
 // Alias for compatibility
 const api = axiosInstance;
@@ -37,9 +48,18 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.clear();
-      window.location.href = "/";
+    const requestUrl = error.config?.url || "";
+    const isAuthRequest =
+      requestUrl.includes("/login") ||
+      requestUrl.includes("/register") ||
+      requestUrl.includes("/user");
+
+    if (error.response?.status === 401 && !isAuthRequest) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+      localStorage.removeItem("roles");
+      localStorage.removeItem("name");
+      window.location.href = "/login";
     }
     return Promise.reject(error);
   }
@@ -93,6 +113,11 @@ const getMedicine = async (id: number) => {
 
 const updateMedicine = async (id: number, data: any) => {
   const response = await api.put(`/dashboard/medicines/${id}`, data);
+  return response.data;
+};
+
+const deleteMedicine = async (id: number) => {
+  const response = await api.delete(`/medicines/${id}`);
   return response.data;
 };
 
@@ -170,6 +195,16 @@ const fetchMessage = async (id: number) => {
 
 const sendMessage = async (data: any) => {
   const response = await api.post(`/messages`, data);
+  return response.data;
+};
+
+const getUnreadMessageCount = async () => {
+  const response = await api.get(`/messages/unread-count`);
+  return response.data;
+};
+
+const markMessageAsRead = async (messageId: number) => {
+  const response = await api.put(`/messages/${messageId}/read`);
   return response.data;
 };
 
@@ -273,6 +308,11 @@ const deletePrescription = async (id: number) => {
   return response.data;
 };
 
+const approvePrescription = async (id: number) => {
+  const response = await api.post(`/prescriptions/${id}/approve`);
+  return response.data;
+};
+
 // ============ PATIENT MANAGEMENT ============
 
 const fetchPatients = async (page = 1) => {
@@ -304,7 +344,7 @@ const deletePatient = async (id: number) => {
 
 const getPrintableSeal = async (sealCode: string) => {
   const response = await api.get(`/seals/${sealCode}/print`);
-  return response.data;
+  return response.data?.data || response.data;
 };
 
 const getSealDetails = async (sealCode: string) => {
@@ -366,6 +406,7 @@ export default {
   fetchMedicines,
   getMedicine,
   updateMedicine,
+  deleteMedicine,
   registerMedicine,
   
   // Deliveries
@@ -383,6 +424,7 @@ export default {
   createPrescription,
   updatePrescription,
   deletePrescription,
+  approvePrescription,
   
   // Patients
   fetchPatients,
@@ -400,6 +442,8 @@ export default {
   fetchMessages,
   fetchMessage,
   sendMessage,
+  getUnreadMessageCount,
+  markMessageAsRead,
   approveDelivery,
   
   // Reports

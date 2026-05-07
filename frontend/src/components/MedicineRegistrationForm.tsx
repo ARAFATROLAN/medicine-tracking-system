@@ -218,6 +218,9 @@ const MedicineRegistrationForm: React.FC<MedicineRegistrationFormProps> = ({
   return (
     <div style={styles.container}>
       <h2 style={styles.title}>Register Medicine</h2>
+      <p style={styles.note}>
+        If this medicine already exists, the new quantity will be added to the existing stock instead of creating a duplicate entry.
+      </p>
 
       {error && <div style={styles.errorMessage}>{error}</div>}
       {success && <div style={styles.successMessage}>{success}</div>}

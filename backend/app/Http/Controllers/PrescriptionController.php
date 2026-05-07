@@ -6,6 +6,9 @@ use App\Repositories\PrescriptionRepository; // FIX: Capital A in App
 use Illuminate\Http\Request;
 use App\Http\Resources\PrescriptionResource;
 use App\Models\ActivityLog;
+use App\Models\Message;
+use App\Models\Notification;
+use App\Models\User;
 use App\Services\QRCodeService;
 
 class PrescriptionController extends Controller
@@ -21,10 +24,10 @@ class PrescriptionController extends Controller
     public function index(Request $request)
     {
         try {
-            // Get authenticated user ID - doctors should only see their own prescriptions
-            $userId = $request->user()->id;
+            $user = $request->user();
+            $doctorId = $user->hasRole('doctor') ? $user->id : null;
 
-            $prescriptions = $this->repository->all($userId);
+            $prescriptions = $this->repository->all($doctorId);
 
             return response()->json([
                 'status' => true,
@@ -161,6 +164,42 @@ class PrescriptionController extends Controller
                 \Log::warning('Failed to log prescription activity: ' . $logError->getMessage());
             }
 
+            // Send message to pharmacists about the new prescription
+            try {
+                $medicineNames = $prescription->medicines
+                    ->pluck('name')
+                    ->join(', ');
+                    
+                $messageBody = "New prescription created by Dr. {$request->user()->name}: Patient {$prescription->patient?->name}, Medicines: {$medicineNames}";
+                
+                $message = Message::create([
+                    'sender_id' => $request->user()->id,
+                    'recipient_role' => 'pharmacists',
+                    'body' => $messageBody,
+                    'parent_id' => null,
+                    'thread_id' => null,
+                ]);
+                
+                $message->thread_id = $message->id;
+                $message->save();
+                
+                // Create notifications for all pharmacists
+                $pharmacists = User::whereHas('roles', function ($query) {
+                    $query->where('name', 'Pharmacist');
+                })->where('id', '!=', $request->user()->id)->get();
+                
+                foreach ($pharmacists as $pharmacist) {
+                    Notification::create([
+                        'user_id' => $pharmacist->id,
+                        'message' => "Dr. {$request->user()->name} created a prescription for {$prescription->patient?->name}",
+                        'type' => 'prescription',
+                        'reference_id' => $prescription->id,
+                    ]);
+                }
+            } catch (\Exception $msgError) {
+                \Log::warning('Failed to send prescription message to pharmacists: ' . $msgError->getMessage());
+            }
+
             return response()->json([
                 'status' => true,
                 'message' => 'Prescription created successfully',
@@ -231,6 +270,63 @@ class PrescriptionController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to delete prescription',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // APPROVE PRESCRIPTION
+    public function approve(Request $request, $id)
+    {
+        try {
+            $prescription = $this->repository->find($id);
+
+            if (!$prescription) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Prescription not found'
+                ], 404);
+            }
+
+            // Update prescription with approved status
+            $prescription->update([
+                'status' => 'approved',
+                'pharmacist_id' => $request->user()->id,
+            ]);
+
+            // Log activity
+            try {
+                ActivityLog::create([
+                    'user_id' => $request->user()->id,
+                    'action' => "Approved prescription for patient {$prescription->patient?->name}",
+                    'entity_type' => 'Prescription',
+                    'entity_id' => $prescription->id,
+                ]);
+            } catch (\Exception $logError) {
+                \Log::warning('Failed to log prescription approval: ' . $logError->getMessage());
+            }
+
+            // Send notification to doctor
+            try {
+                Notification::create([
+                    'user_id' => $prescription->doctor_id,
+                    'message' => "Your prescription for {$prescription->patient?->name} has been approved by pharmacist {$request->user()->name}",
+                    'type' => 'prescription',
+                    'reference_id' => $prescription->id,
+                ]);
+            } catch (\Exception $notifError) {
+                \Log::warning('Failed to send approval notification: ' . $notifError->getMessage());
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Prescription approved successfully',
+                'data' => new PrescriptionResource($prescription->load('medicines', 'patient', 'doctor'))
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to approve prescription',
                 'error' => $e->getMessage()
             ], 500);
         }

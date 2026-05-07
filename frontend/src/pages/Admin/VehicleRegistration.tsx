@@ -135,7 +135,7 @@ const VehicleRegistration: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   return (
     <div className="vehicle-registration-container">
       <div className="vehicle-registration-header">
-        <h2>Vehicle Management</h2>
+        <h2 style={{ fontWeight: 'bold' }}>Vehicle Management</h2>
         <button className="btn-close" onClick={onClose}>
           ✕
         </button>
