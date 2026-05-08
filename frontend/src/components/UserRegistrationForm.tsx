@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import api from "../Services/api";
+import "./UserRegistrationForm.css";
 
 interface UserRegistrationFormProps {
   onSuccess?: () => void;
@@ -57,17 +58,17 @@ const UserRegistrationForm: React.FC<UserRegistrationFormProps> = ({
   };
 
   return (
-    <div style={styles.mainContent}>
-      <div style={styles.registerCard}>
-        <h2 style={styles.title}>Register New User</h2>
+    <div className="mainContent">
+      <div className="registerCard">
+        <h2 className="title">Register New User</h2>
 
         {registerError && (
-          <div style={styles.errorMessage}>{registerError}</div>
+          <div className="errorMessage">{registerError}</div>
         )}
 
         <form onSubmit={handleSubmit} autoComplete="off">
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Full Name</label>
+          <div className="fieldGroup">
+            <label className="label">Full Name</label>
             <input
               type="text"
               placeholder="Enter full name"
@@ -75,12 +76,12 @@ const UserRegistrationForm: React.FC<UserRegistrationFormProps> = ({
               autoComplete="off"
               onChange={(e) => setName(e.target.value)}
               required
-              style={styles.input}
+              className="input"
             />
           </div>
 
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Email Address</label>
+          <div className="fieldGroup">
+            <label className="label">Email Address</label>
             <input
               type="email"
               placeholder="Enter email"
@@ -88,12 +89,12 @@ const UserRegistrationForm: React.FC<UserRegistrationFormProps> = ({
               autoComplete="off"
               onChange={(e) => setEmail(e.target.value)}
               required
-              style={styles.input}
+              className="input"
             />
           </div>
 
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Contact</label>
+          <div className="fieldGroup">
+            <label className="label">Contact</label>
             <input
               type="tel"
               placeholder="Enter phone number"
@@ -101,16 +102,18 @@ const UserRegistrationForm: React.FC<UserRegistrationFormProps> = ({
               autoComplete="off"
               onChange={(e) => setContact(e.target.value)}
               required
-              style={styles.input}
+              className="input"
             />
           </div>
 
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Role</label>
+          <div className="fieldGroup">
+            <label htmlFor="role" className="label">Role</label>
             <select
+              id="role"
               value={specialisation}
               onChange={(e) => setSpecialisation(e.target.value)}
-              style={styles.select}
+              className="select"
+              title="Select your role"
             >
               <option value="Doctor">Doctor</option>
               <option value="Pharmacist">Pharmacist</option>
@@ -118,9 +121,9 @@ const UserRegistrationForm: React.FC<UserRegistrationFormProps> = ({
             </select>
           </div>
 
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Password</label>
-            <div style={styles.passwordContainer}>
+          <div className="fieldGroup">
+            <label className="label">Password</label>
+            <div className="passwordContainer">
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter password"
@@ -130,31 +133,31 @@ const UserRegistrationForm: React.FC<UserRegistrationFormProps> = ({
                 required
                 pattern="^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$"
                 title="Password must be alphanumeric and at least 6 characters"
-                style={styles.passwordInput}
+                className="passwordInput"
               />
               <span
-                style={styles.eyeButton}
+                className="eyeButton"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? "🙈" : "👁"}
               </span>
             </div>
-            <small style={styles.passwordHint}>
+            <small className="passwordHint">
               Password must be alphanumeric
             </small>
           </div>
 
-          <div style={styles.buttonGroup}>
+          <div className="buttonGroup">
             <button
               type="submit"
-              style={styles.submitButton}
+              className="submitButton"
               disabled={registering}
             >
               {registering ? "Registering..." : "Register User"}
             </button>
             <button
               type="button"
-              style={styles.cancelButton}
+              className="cancelButton"
               onClick={onCancel}
               disabled={registering}
             >
@@ -165,130 +168,6 @@ const UserRegistrationForm: React.FC<UserRegistrationFormProps> = ({
       </div>
     </div>
   );
-};
-
-const styles: { [key: string]: React.CSSProperties } = {
-  mainContent: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "20px",
-  },
-
-  registerCard: {
-    width: "400px",
-    padding: "40px",
-    backgroundColor: "#d0e7ff",
-    borderRadius: "10px",
-    boxShadow: "5px 80px 100px rgba(0,0,0,0.3)",
-  },
-
-  title: {
-    textAlign: "center",
-    marginBottom: "20px",
-    fontSize: "24px",
-    fontWeight: "bold",
-    color: "#2563eb",
-  },
-
-  errorMessage: {
-    backgroundColor: "#ffdddd",
-    color: "#d8000c",
-    border: "1px solid #d8000c",
-    borderRadius: "5px",
-    padding: "10px",
-    marginBottom: "15px",
-    textAlign: "center",
-    fontSize: "14px",
-  },
-
-  fieldGroup: {
-    marginBottom: "15px",
-    display: "flex",
-    flexDirection: "column",
-  },
-
-  label: {
-    marginBottom: "6px",
-    fontWeight: 600,
-    fontSize: "14px",
-  },
-
-  input: {
-    padding: "12px",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
-    fontSize: "14px",
-  },
-
-  select: {
-    padding: "12px",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
-    fontSize: "14px",
-    backgroundColor: "white",
-  },
-
-  passwordContainer: {
-    display: "flex",
-    alignItems: "center",
-    border: "1px solid #ccc",
-    borderRadius: "6px",
-    background: "white",
-  },
-
-  passwordInput: {
-    flex: 1,
-    padding: "12px",
-    border: "none",
-    outline: "none",
-    fontSize: "14px",
-  },
-
-  eyeButton: {
-    padding: "0 10px",
-    cursor: "pointer",
-    fontSize: "18px",
-  },
-
-  passwordHint: {
-    color: "#555",
-    fontSize: "12px",
-    marginTop: "4px",
-  },
-
-  buttonGroup: {
-    display: "flex",
-    gap: "12px",
-    marginTop: "20px",
-  },
-
-  submitButton: {
-    flex: 1,
-    padding: "12px",
-    backgroundColor: "#2563eb",
-    color: "white",
-    border: "none",
-    borderRadius: "6px",
-    fontSize: "16px",
-    cursor: "pointer",
-    marginTop: "10px",
-    fontWeight: "bold",
-  },
-
-  cancelButton: {
-    flex: 1,
-    padding: "12px",
-    backgroundColor: "#e5e7eb",
-    color: "#374151",
-    border: "none",
-    borderRadius: "6px",
-    fontSize: "16px",
-    cursor: "pointer",
-    marginTop: "10px",
-    fontWeight: "bold",
-  },
 };
 
 export default UserRegistrationForm;

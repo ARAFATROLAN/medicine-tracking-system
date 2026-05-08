@@ -24,25 +24,20 @@ const Register: React.FC = () => {
       return;
     }
 
-    console.log({
-      name,
-      email,
-      password,
-      contact,
-      specialisation
-    });
-
+    setRegisterError("");
     setRegistering(true);
+
     try {
+      const response = await api.registerUser(
+        name.trim(),
+        email.trim(),
+        password,
+        contact.trim(),
+        specialisation
+      );
 
-      // FIX: send parameters correctly
-      const response = await api.registerUser(name, email, password, contact, specialisation);
-
-      setRegisterError("");
-      
-      // Store auth data
       localStorage.setItem("token", response.access_token);
-      localStorage.setItem("role", response.user.specialisation);
+      localStorage.setItem("role", response.user.specialisation || "");
       localStorage.setItem("roles", JSON.stringify(response.user.roles || []));
       localStorage.setItem("name", response.user.name);
 
@@ -54,27 +49,19 @@ const Register: React.FC = () => {
       setShowPassword(false);
 
       navigate("/");
-
     } catch (err: any) {
-
-      console.log("FULL ERROR:", err.response);
+      console.error("Registration error:", err);
 
       if (err.response?.data?.errors) {
-
         const errors = Object.values(err.response.data.errors)
           .flat()
           .join(" | ");
-
         setRegisterError(errors);
-
       } else {
-
         setRegisterError(
-          err.response?.data?.message || "Registration failed"
+          err.response?.data?.message || err.message || "Registration failed"
         );
-
       }
-
     } finally {
       setRegistering(false);
     }
@@ -136,9 +123,12 @@ const Register: React.FC = () => {
             <div style={styles.fieldGroup}>
               <label style={styles.label}>Specialisation</label>
               <select
+                name="specialisation"
                 value={specialisation}
                 onChange={(e) => setSpecialisation(e.target.value)}
+                required
                 style={styles.select}
+                title="Select your specialisation"
               >
                 <option value="Doctor">Doctor</option>
                 <option value="Pharmacist">Pharmacist</option>

@@ -17,25 +17,32 @@ return [
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
     // HTTP methods allowed
-    'allowed_methods' => ['*'],
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 
     // Origins allowed to access API
-    // During development, allow all; in production, replace '*' with your frontend domain
-    'allowed_origins' => ['*', 'http://localhost:5174'],
+    // During development, allow all; in production, restrict to frontend domains
+    'allowed_origins' => [
+        env('FRONTEND_URL', 'http://localhost:3000'),
+        env('APP_URL', 'http://localhost'),
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:8000',
+    ],
 
     // Regex patterns for allowed origins (optional)
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => ['localhost:.*'],
 
     // Headers allowed in requests
-    'allowed_headers' => ['*'],
+    'allowed_headers' => ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
 
     // Headers exposed to frontend
-    'exposed_headers' => [],
+    'exposed_headers' => ['Authorization'],
 
     // Maximum age for preflight requests
-    'max_age' => 0,
+    'max_age' => 86400,
 
     // Whether cookies/credentials are supported
-    'supports_credentials' => false,
+    'supports_credentials' => true,
 
 ];

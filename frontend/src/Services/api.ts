@@ -16,14 +16,6 @@ const axiosInstance = axios.create({
   withCredentials: false,
 });
 
-// Enable HTTP keep-alive for connection reuse
-axiosInstance.defaults.http = {
-  // Enable keep-alive
-  keepAlive: true,
-  maxSockets: 6,
-  maxSocketsPerHost: 6,
-};
-
 // Alias for compatibility
 const api = axiosInstance;
 

@@ -1,7 +1,7 @@
 <?php
 require 'vendor/autoload.php';
- = require 'bootstrap/app.php';
-->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
- = app('db');
-echo 'Roles: ' . ->table('roles')->count() . PHP_EOL;
-echo 'User roles: ' . ->table('user_roles')->count() . PHP_EOL;
+$app = require 'bootstrap/app.php';
+$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
+$db = app('db');
+echo 'Roles: ' . $db->table('roles')->count() . PHP_EOL;
+echo 'User roles: ' . $db->table('user_roles')->count() . PHP_EOL;

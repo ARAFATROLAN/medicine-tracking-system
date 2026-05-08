@@ -109,6 +109,37 @@ const AdminDashboard: React.FC = () => {
     console.log("✅ User has admin role - allowing access");
   }, [navigate]);
 
+  // ============ SET LIGHT THEME FOR ADMIN DASHBOARD ============
+  useEffect(() => {
+    // Save current theme preference
+    const previousTheme = localStorage.getItem("theme");
+    const wasDarkMode = document.documentElement.classList.contains("dark");
+
+    // Set light theme for admin dashboard
+    localStorage.setItem("theme", "light");
+    document.documentElement.classList.remove("dark");
+
+    // Restore previous theme when leaving admin dashboard
+    return () => {
+      if (previousTheme) {
+        localStorage.setItem("theme", previousTheme);
+        if (previousTheme === "dark") {
+          document.documentElement.classList.add("dark");
+        }
+      } else {
+        // If no previous theme was saved, restore based on system preference
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (prefersDark) {
+          localStorage.setItem("theme", "dark");
+          document.documentElement.classList.add("dark");
+        } else {
+          localStorage.setItem("theme", "light");
+          document.documentElement.classList.remove("dark");
+        }
+      }
+    };
+  }, []);
+
   const fetchActivityLogs = useCallback(async (page = 1) => {
     setActivityLoading(true);
     setActivityError(null);

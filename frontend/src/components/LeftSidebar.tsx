@@ -260,41 +260,50 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, onToggle, onMessagesC
 
             <form onSubmit={handlePasswordChange} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                <label htmlFor="current-password" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                   Current Password
                 </label>
                 <input
+                  id="current-password"
                   type="password"
                   value={passwordData.current_password}
                   onChange={(e) => setPasswordData(prev => ({ ...prev, current_password: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  placeholder="Enter current password"
+                  title="Current Password"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                <label htmlFor="new-password" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                   New Password
                 </label>
                 <input
+                  id="new-password"
                   type="password"
                   value={passwordData.password}
                   onChange={(e) => setPasswordData(prev => ({ ...prev, password: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  placeholder="Enter new password"
+                  title="New Password"
                   required
                   minLength={8}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                <label htmlFor="confirm-password" className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                   Confirm New Password
                 </label>
                 <input
+                  id="confirm-password"
                   type="password"
                   value={passwordData.password_confirmation}
                   onChange={(e) => setPasswordData(prev => ({ ...prev, password_confirmation: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  placeholder="Confirm new password"
+                  title="Confirm New Password"
                   required
                   minLength={8}
                 />
