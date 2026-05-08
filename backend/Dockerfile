@@ -19,8 +19,10 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
-
 COPY . .
+
+# Copy PHP-FPM configuration
+COPY www.conf /usr/local/etc/php-fpm.d/www.conf
 
 RUN composer install
 

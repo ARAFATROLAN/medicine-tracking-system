@@ -156,9 +156,9 @@ const MessageCenter: React.FC = () => {
     <div style={styles.container}>
       <div style={styles.header}>
         <div>
-          <h2 style={styles.title}>💬 Message Center</h2>
+          <h2 style={styles.title}>Messages</h2>
           <p style={styles.subtitle}>
-            Click unread notifications to display new messages, then reply with a recipient role.
+           .
           </p>
         </div>
         <button type="button" onClick={toggleMessageList} style={styles.unreadToggle}>

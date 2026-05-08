@@ -285,7 +285,7 @@ const PharmacistDashboard: React.FC = () => {
           <div style={styles.popupCard}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px" }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700 }}>Prescription Approval Needed</h2>
+                <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700 }}>Prescription Approval needed</h2>
                 <p style={{ margin: "12px 0 0", color: "#334155" }}>{prescriptionPopup.message}</p>
               </div>
               <button
@@ -300,7 +300,7 @@ const PharmacistDashboard: React.FC = () => {
                 }}
                 aria-label="Close approval popup"
               >
-                ×
+                
               </button>
             </div>
             <div style={styles.popupActions}>
@@ -361,7 +361,7 @@ const PharmacistDashboard: React.FC = () => {
           }}
           onClick={() => setActiveTab("inventory")}
         >
-          View Inventory
+          Inventory
         </button>
         <button
           style={{
@@ -403,7 +403,7 @@ const PharmacistDashboard: React.FC = () => {
         </div>
 
         <div style={styles.card}>
-          <h3 style={{ fontWeight: 'bold' }}>⚠ Low Stock Alerts</h3>
+          <h3 style={{ fontWeight: 'bold' }}>Low Stock Alerts</h3>
           <p style={styles.cardValue}><AnimatedNumber value={lowStockMedicines} /></p>
         </div>
 
@@ -636,7 +636,7 @@ const PharmacistDashboard: React.FC = () => {
               <p style={styles.cardValue}>{deliveries.filter(d => d.status === 'approved').length}</p>
             </div>
             <div style={styles.card}>
-              <h3>❌ Rejected</h3>
+              <h3>Rejected</h3>
               <p style={styles.cardValue}>{deliveries.filter(d => d.status === 'rejected').length}</p>
             </div>
           </div>

@@ -106,7 +106,7 @@ const PatientRegistrationForm: React.FC<PatientRegistrationFormProps> = ({
 
       {success && (
         <div style={styles.successMessage}>
-          <span>✅ Patient registered successfully! ID: {generatedId}</span>
+          <span>Patient registered successfully! ID: {generatedId}</span>
         </div>
       )}
 

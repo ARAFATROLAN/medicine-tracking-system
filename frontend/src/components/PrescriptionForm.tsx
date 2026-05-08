@@ -200,7 +200,7 @@ const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
 
   return (
     <div style={styles.formContainer}>
-      <h3>📋 Create New Prescription</h3>
+      <h3>Create Prescription</h3>
 
       {error && (
         <div style={styles.errorMessage}>
@@ -210,7 +210,7 @@ const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
 
       {success && (
         <div style={styles.successMessage}>
-          <span>✅ Prescription created successfully!</span>
+          <span>Prescription created successfully!</span>
         </div>
       )}
 

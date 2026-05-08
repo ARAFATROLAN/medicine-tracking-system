@@ -35,7 +35,7 @@ const Register: React.FC = () => {
     setRegistering(true);
     try {
 
-      // FIX: send parameters correctly
+      // Ensure parameters are sent correctly
       const response = await api.registerUser(name, email, password, contact, specialisation);
 
       setRegisterError("");

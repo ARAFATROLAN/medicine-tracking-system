@@ -208,7 +208,7 @@ export default function SealScanner() {
             <div className="mt-6 p-4 bg-purple-50 rounded-lg">
               <p className="text-sm text-gray-700">
                 <strong>How to scan:</strong> Most mobile devices with a camera can scan the QR code directly. 
-                The seal code will be automatically populated.
+              
               </p>
             </div>
           </div>

@@ -34,7 +34,7 @@ const AdminDashboard: React.FC = () => {
   const [transfers, _setTransfers] = useState<Transfer[]>([]);
   const [system, setSystem] = useState({ cpu: 0, memory: 0 });
 
-  // 🔥 CORE: REAL-TIME POLLING
+  // CORE: REAL-TIME POLLING
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -66,12 +66,12 @@ const AdminDashboard: React.FC = () => {
 
     fetchData();
 
-    const interval = setInterval(fetchData, 5000); // 🔥 refresh every 5s
+    const interval = setInterval(fetchData, 5000); //  refresh every 5s
 
     return () => clearInterval(interval);
   }, []);
 
-  // 🔥 derived alerts
+  //  derived alerts
   const lowStock = medicines.filter(m => m.inventories.some(inv => inv.quantity < 50));
   const expiring = medicines.filter(m => m.inventories.some(inv => {
     const days = (new Date(inv.expiry_date).getTime() - Date.now()) / 86400000;
@@ -87,7 +87,7 @@ const AdminDashboard: React.FC = () => {
           <h1>Hospital Control Center</h1>
         </div>
 
-        {/* 🔥 SYSTEM OVERVIEW */}
+        {/*  SYSTEM OVERVIEW */}
         <div style={styles.grid}>
           <Card title="Users" value={stats.users} />
           <Card title="Medicines" value={stats.medicines} />
@@ -95,14 +95,14 @@ const AdminDashboard: React.FC = () => {
           <Card title="Transfers" value={stats.transfers} />
         </div>
 
-        {/* 🔥 ALERTS */}
+        {/*  ALERTS */}
         <div style={styles.section}>
-          <h2 style={{ fontWeight: 'bold' }}>⚠ Alerts</h2>
+          <h2 style={{ fontWeight: 'bold' }}> Alerts</h2>
           <p>Low Stock: {lowStock.length}</p>
           <p>Expiring Soon: {expiring.length}</p>
         </div>
 
-        {/* 🔥 TRANSFER APPROVAL */}
+        {/*  TRANSFER APPROVAL */}
         <div style={styles.section}>
           <h2 style={{ fontWeight: 'bold' }}>Transfer Verification</h2>
           {transfers.map(t => (
@@ -112,7 +112,7 @@ const AdminDashboard: React.FC = () => {
           ))}
         </div>
 
-        {/* 🔥 LIVE ACTIVITY LOG */}
+        {/*  LIVE ACTIVITY LOG */}
         <div style={styles.section}>
           <h2 style={{ fontWeight: 'bold' }}>Live Activity</h2>
           {logs.slice(0, 5).map(log => (
@@ -122,7 +122,7 @@ const AdminDashboard: React.FC = () => {
           ))}
         </div>
 
-        {/* 🔥 SYSTEM HEALTH */}
+        {/*  SYSTEM HEALTH */}
         <div style={styles.grid}>
           <Card title="CPU Usage" value={`${system.cpu}%`} />
           <Card title="Memory Usage" value={`${system.memory}%`} />
@@ -135,7 +135,7 @@ const AdminDashboard: React.FC = () => {
 
 export default AdminDashboard;
 
-// 🔥 reusable card
+//  reusable card
 const Card = ({ title, value }: { title: string; value: any }) => (
   <div style={styles.card}>
     <h3 style={{ fontWeight: 'bold' }}>{title}</h3>
@@ -164,13 +164,13 @@ const styles: any = {
     marginBottom: 20
   },
   card: {
-    background: "#fff",
+    background: "#d89127",
     padding: 20,
     borderRadius: 10,
     boxShadow: "0 4px 10px rgba(0,0,0,0.1)"
   },
   section: {
-    background: "#fff",
+    background: "#e9baba",
     padding: 20,
     marginBottom: 20,
     borderRadius: 10
