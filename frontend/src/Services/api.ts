@@ -3,7 +3,29 @@
 import axios from "axios";
 
 // Base API URL
-const baseURL: string = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+const baseURL: string = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1";
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isNetworkError = (error: any) => {
+  return (
+    error?.code === "ECONNABORTED" ||
+    /timeout/i.test(error?.message || "") ||
+    (error?.request && !error?.response)
+  );
+};
+
+const retryRequest = async <T>(fn: () => Promise<T>, retries = 1, delayMs = 250): Promise<T> => {
+  try {
+    return await fn();
+  } catch (error: any) {
+    if (retries > 0 && isNetworkError(error)) {
+      await delay(delayMs);
+      return retryRequest(fn, retries - 1, delayMs);
+    }
+    throw error;
+  }
+};
 
 // Create axios instance with connection optimization
 const axiosInstance = axios.create({
@@ -369,11 +391,13 @@ const registerUser = async (
 };
 
 const loginUser = async (email: string, password: string) => {
-  const response = await api.post("/login", {
-    email,
-    password
-  });
-  return response.data;
+  return retryRequest(async () => {
+    const response = await api.post("/login", {
+      email,
+      password
+    });
+    return response.data;
+  }, 1, 250);
 };
 
 const updatePassword = async (data: any) => {

@@ -174,7 +174,7 @@ const DoctorDashboard: React.FC = () => {
     <div style={styles.container}>
       <div style={styles.banner}>
         <div>
-          <h1>👨‍⚕️ Doctor Dashboard</h1>
+          <h1>Doctor Dashboard</h1>
           <p>Welcome Dr. {name}</p>
         </div>
         <button
@@ -251,18 +251,13 @@ const DoctorDashboard: React.FC = () => {
         <>
       <div style={styles.cards}>
         <div style={styles.card}>
-          <h3 style={{ fontWeight: 'bold' }}>👥 Total Patients</h3>
+          <h3 style={{ fontWeight: 'bold' }}>Patients</h3>
           <p style={styles.cardValue}><AnimatedNumber value={totalPatients} /></p>
         </div>
 
         <div style={styles.card}>
-          <h3 style={{ fontWeight: 'bold' }}>Total Prescriptions</h3>
+          <h3 style={{ fontWeight: 'bold' }}>Prescriptions</h3>
           <p style={styles.cardValue}><AnimatedNumber value={totalPrescriptions} /></p>
-        </div>
-
-        <div style={styles.card}>
-          <h3 style={{ fontWeight: 'bold' }}>Low Stock Medicines</h3>
-          <p style={styles.cardValue}><AnimatedNumber value={lowStockMedicines} /></p>
         </div>
 
         <div style={styles.card}>
@@ -273,7 +268,7 @@ const DoctorDashboard: React.FC = () => {
 
       {/* Recent Prescriptions */}
       <div style={styles.section}>
-        <h2 style={{ fontWeight: 'bold' }}>Recent Prescriptions</h2>
+        <h2 style={{ fontWeight: 'bold' }}>Prescriptions</h2>
         <div style={styles.tableContainer}>
           <table style={styles.table}>
             <thead>
@@ -311,8 +306,8 @@ const DoctorDashboard: React.FC = () => {
                              prescription.status === 'pending' ? '#92400e' :
                              '#991b1b'
                     }}>
-                      {prescription.status === 'approved' ? '✅ Approved' : 
-                       prescription.status === 'pending' ? '⏳ Pending' : 
+                      {prescription.status === 'approved' ? 'Approved' : 
+                       prescription.status === 'pending' ? 'Pending' : 
                        'Rejected'}
                     </span>
                   </td>

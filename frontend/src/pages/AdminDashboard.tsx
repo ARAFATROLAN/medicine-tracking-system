@@ -87,18 +87,18 @@ const AdminDashboard: React.FC = () => {
   useEffect(() => {
     const rolesStr = localStorage.getItem("roles");
     const specialisation = localStorage.getItem("role");
-    console.log("📍 Storage check - roles string:", rolesStr);
-    console.log("📍 Storage check - specialisation:", specialisation);
+    console.log(" Storage check - roles string:", rolesStr);
+    console.log(" Storage check - specialisation:", specialisation);
     
     const roles = JSON.parse(rolesStr || "[]");
-    console.log("📍 Parsed roles:", roles);
+    console.log(" Parsed roles:", roles);
     
     // Check for admin role - either in roles array or specialisation field
     const hasAdminRole = roles.some((role: string) => 
       role.toLowerCase() === "admin" || role.toLowerCase() === "super_admin"
     ) || specialisation?.toLowerCase() === "admin";
     
-    console.log("📍 Has admin role:", hasAdminRole);
+    console.log(" Has admin role:", hasAdminRole);
     
     if (!hasAdminRole) {
       console.warn("❌ User does not have admin role - redirecting to /dashboard");
@@ -106,14 +106,13 @@ const AdminDashboard: React.FC = () => {
       return;
     }
     
-    console.log("✅ User has admin role - allowing access");
+    console.log(" User has admin role - allowing access");
   }, [navigate]);
 
   // ============ SET LIGHT THEME FOR ADMIN DASHBOARD ============
   useEffect(() => {
     // Save current theme preference
     const previousTheme = localStorage.getItem("theme");
-    const wasDarkMode = document.documentElement.classList.contains("dark");
 
     // Set light theme for admin dashboard
     localStorage.setItem("theme", "light");
@@ -278,7 +277,7 @@ const AdminDashboard: React.FC = () => {
   if (loading) {
     return (
       <div className="admin-container">
-        <div className="loading">⏳ Loading Dashboard...</div>
+        <div className="loading" > Loading Dashboard...</div>
       </div>
     );
   }
@@ -301,7 +300,7 @@ const AdminDashboard: React.FC = () => {
     return (
       <div className="admin-container">
         <div className="error-message">
-          <h2>⚠️ No Data Available</h2>
+          <h2>No Data Available</h2>
           <p>Dashboard data could not be loaded. Please refresh the page.</p>
           <button onClick={() => window.location.reload()} className="btn-retry" style={{marginTop: '20px', padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}>
             🔄 Refresh Page
@@ -482,12 +481,12 @@ const AdminDashboard: React.FC = () => {
             </section>
 
             <section className="low-stock-items-section">
-              <h3 style={{ fontWeight: 'bold' }}>⚠ Low Stock Items</h3>
+              <h3 style={{ fontWeight: 'bold' }}>Low Stock Items</h3>
               <div className="low-stock-grid">
                 {lowStockItems.length > 0 ? (
                   lowStockItems.slice(0, 6).map((medicine) => (
                     <div key={medicine.id} className="low-stock-card">
-                      <h4 style={{ fontWeight: 'bold' }}>⚠ {medicine.name}</h4>
+                      <h4 style={{ fontWeight: 'bold' }}> {medicine.name}</h4>
                       <p>
                         {medicine.quantity === 0
                           ? `${medicine.name} is finished`
@@ -531,7 +530,7 @@ const AdminDashboard: React.FC = () => {
             {/* RECENT ACTIVITY */}
             <section className="recent-activity">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
-                <h3>📝 Recent Activity (Last 10)</h3>
+                <h3> Recent Activity (Last 10)</h3>
                 {stats?.recent_activities && stats.recent_activities.length >= 10 && (
                   <button
                     type="button"
@@ -558,7 +557,7 @@ const AdminDashboard: React.FC = () => {
                     <div key={idx} className="activity-item">
                       <div className="activity-content">
                         <span className="activity-action">{activity.action}</span>
-                        <span className="activity-user-id">👤 User ID: {activity.user_id}</span>
+                        <span className="activity-user-id">User ID: {activity.user_id}</span>
                       </div>
                       <span className="activity-time">
                         {new Date(activity.created_at).toLocaleString()}
@@ -626,14 +625,14 @@ const AdminDashboard: React.FC = () => {
                   onClick={() => setShowVehicleRegistration(true)}
                   title="Register and manage vehicles"
                 >
-                  ✏️ Vehicle Management
+                  Vehicle Management
                 </button>
                 <button
                   className="btn-vehicle-action btn-track"
                   onClick={() => setShowVehicleTracking(true)}
                   title="Track vehicles in real-time"
                 >
-                  📍 Track Vehicle
+                  Track Vehicle
                 </button>
               </div>
 
@@ -664,7 +663,15 @@ const MetricCard: React.FC<{
   color?: string;
   highlight?: boolean;
 }> = ({ title, value, icon, color = "#6366f1", highlight = false }) => (
-  <div className={`metric-card ${highlight ? "highlight" : ""}`} style={{ borderLeftColor: color }}>
+  <div
+    className={`metric-card ${highlight ? "highlight" : ""}`}
+    style={{
+      borderColor: color,
+      background: `linear-gradient(135deg, ${color}40 0%, ${color}18 100%)`,
+      color: "#0f172a",
+      boxShadow: `0 20px 40px ${color}22`,
+    }}
+  >
     <div className="metric-icon">{icon}</div>
     <div className="metric-info">
       <p className="metric-title">{title}</p>
@@ -800,7 +807,7 @@ const UsersManagement: React.FC = () => {
       ) : (
         <>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-            <h3 style={{ fontWeight: 'bold', margin: 0 }}>👥 User Management</h3>
+            <h3 style={{ fontWeight: 'bold', margin: 0 }}>User Management</h3>
             <button
               style={{
                 padding: "8px 16px",
@@ -815,7 +822,7 @@ const UsersManagement: React.FC = () => {
               }}
               onClick={() => setShowRegistrationForm(true)}
             >
-              ➕ Register New User
+              Register New User
             </button>
           </div>
 
@@ -882,7 +889,7 @@ const UsersManagement: React.FC = () => {
                           onClick={() => handleEditClick(user)}
                           disabled={editingUser?.id === user.id}
                         >
-                          {editingUser?.id === user.id ? "Editing..." : "✏️ Edit"}
+                          {editingUser?.id === user.id ? "Editing..." : "Edit"}
                         </button>
                         <button
                           className="btn-delete"
@@ -946,7 +953,7 @@ const HospitalManagement: React.FC = () => {
     setDeviceLoading(true);
     try {
       const data = await api.fetchDevices(hospital?.id);
-      console.log("✅ Devices loaded:", data);
+      console.log("Devices loaded:", data);
       setDevices(data.data || data || []);
       setSelectedHospital(hospital || null);
       setMessage(null);
@@ -958,7 +965,7 @@ const HospitalManagement: React.FC = () => {
       });
       // Don't show error for initial load, just log it
       if (!hospital) {
-        console.log("⚠️ Could not load initial devices list");
+        console.log("Could not load devices list");
         setDevices([]);
       } else {
         setMessage("Unable to fetch devices for this hospital.");
@@ -1029,7 +1036,7 @@ const HospitalManagement: React.FC = () => {
       setDeviceForm({ hospital_id: null, name: "", identifier: "", location: "", is_active: true });
       setMessage("Device registered successfully.");
     } catch (err: any) {
-      console.error("Failed to create device:", err);
+      console.error("Failed to register device:", err);
       const message = err.response?.data?.message || err.message || "Unable to register device.";
       setMessage(message);
     } finally {
@@ -1038,7 +1045,7 @@ const HospitalManagement: React.FC = () => {
   };
 
   const handleDeleteDevice = async (id: number) => {
-    if (!window.confirm("Delete this branch device?")) {
+    if (!window.confirm("Delete this device?")) {
       return;
     }
 
@@ -1060,7 +1067,7 @@ const HospitalManagement: React.FC = () => {
   return (
     <div className="management-section">
       <div className="section-header">
-        <h3 style={{ fontWeight: 'bold' }}>🏥 Hospital & Branch Device Management</h3>
+        <h3 style={{ fontWeight: 'bold' }}>Hospital & Branch Device Management</h3>
       </div>
 
       {message && <div className="form-message">{message}</div>}
@@ -1157,9 +1164,7 @@ const HospitalManagement: React.FC = () => {
         <div className="management-column">
           <div className="form-card">
             <h4 style={{ fontWeight: 'bold' }}>Register Branch Device</h4>
-            <p className="small-note">
-              Devices can now be registered independently of hospitals. Optionally assign a device to a hospital.
-            </p>
+            
             <div className="form-grid">
               <label>
                 Device Name
@@ -1348,7 +1353,7 @@ const MedicinesManagement: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this medicine? This cannot be undone.")) {
+    if (!window.confirm("Are you sure you want to delete this medicine?\nThis cannot be undone.")) {
       return;
     }
     setDeletingId(id);
@@ -1409,61 +1414,17 @@ const MedicinesManagement: React.FC = () => {
       }
     } catch (err) {
       console.error("Failed to get printable seal:", err);
-      notification?.notify({ type: "error", message: "Failed to generate printable seal. Please try again." });
+      notification?.notify({ type: "error", message: "Failed to generate seal. Please try again." });
     }
   };
 
   return (
     <div className="management-section">
-      <h3 style={{ fontWeight: 'bold' }}>💊 Medicine Management</h3>
+      <h3 style={{ fontWeight: 'bold' }}>Medicine Management</h3>
       {loading ? (
         <p>Loading medicines...</p>
       ) : medicines.length > 0 ? (
         <>
-          {editingMedicine && (
-            <div className="form-card edit-medicine-card">
-              <h4 style={{ fontWeight: 'bold' }}>Edit Medicine #{editingMedicine.id}</h4>
-              <div className="form-grid">
-                <label>
-                  Name
-                  <input
-                    type="text"
-                    value={editForm.name}
-                    onChange={(e) => handleEditChange("name", e.target.value)}
-                  />
-                </label>
-                <label>
-                  Description
-                  <textarea
-                    value={editForm.description}
-                    onChange={(e) => handleEditChange("description", e.target.value)}
-                  />
-                </label>
-                <label>
-                  Expiry Date
-                  <input
-                    type="date"
-                    value={editForm.expiry_date}
-                    onChange={(e) => handleEditChange("expiry_date", e.target.value)}
-                  />
-                </label>
-              </div>
-              <div style={{ marginTop: 16, display: "flex", gap: 12, flexWrap: "wrap" }}>
-                <button
-                  className="btn-primary"
-                  type="button"
-                  onClick={handleSaveMedicine}
-                  disabled={saving}
-                >
-                  {saving ? "Saving..." : "Save Changes"}
-                </button>
-                <button className="btn-delete" type="button" onClick={handleCancelEdit}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
           <div className="table-responsive">
           <table className="management-table">
             <thead>
@@ -1479,53 +1440,102 @@ const MedicinesManagement: React.FC = () => {
             </thead>
             <tbody>
               {medicines.map((med) => (
-                <tr key={med.id}>
-                  <td>{med.id}</td>
-                  <td>{med.name}</td>
-                  <td>{med.description?.substring(0, 30) || "N/A"}...</td>
-                  <td>
-                    <span className={`status-badge status-${getStockStatus(med.inventories)}`}>
-                      {getStockStatus(med.inventories)}
-                    </span>
-                  </td>
-                  <td>
-                    {med.seal_code_data?.qr_code_url ? (
-                      <div className="seal-code-cell">
-                        <div className="qr-code-display">
-                          <img
-                            src={med.seal_code_data.qr_code_url}
-                            alt="Medicine QR Code"
-                            className="qr-code-image"
-                            style={{ width: '70px', height: '70px', objectFit: 'contain' }}
-                          />
+                <React.Fragment key={med.id}>
+                  <tr>
+                    <td>{med.id}</td>
+                    <td>{med.name}</td>
+                    <td>{med.description?.substring(0, 30) || "N/A"}...</td>
+                    <td>
+                      <span className={`status-badge status-${getStockStatus(med.inventories)}`}>
+                        {getStockStatus(med.inventories)}
+                      </span>
+                    </td>
+                    <td>
+                      {med.seal_code_data?.qr_code_url ? (
+                        <div className="seal-code-cell">
+                          <div className="qr-code-display">
+                            <img
+                              src={med.seal_code_data.qr_code_url}
+                              alt="Medicine QR Code"
+                              className="qr-code-image"
+                              style={{ width: '70px', height: '70px', objectFit: 'contain' }}
+                            />
+                          </div>
+                          <button
+                            className="btn-print-seal"
+                            onClick={() => handlePrintSeal(med.seal_code_data.code)}
+                            title="Print QR Code"
+                          >
+                            Print
+                          </button>
                         </div>
-                        <button
-                          className="btn-print-seal"
-                          onClick={() => handlePrintSeal(med.seal_code_data.code)}
-                          title="Print QR Code"
-                        >
-                          🖨️ Print
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="no-seal">No Seal</span>
-                    )}
-                  </td>
-                  <td>{new Date(med.expiry_date).toLocaleDateString()}</td>
-                  <td>
-                    <button className="btn-edit" type="button" onClick={() => handleEditClick(med)}>
-                      ✏️ Edit
-                    </button>
-                    <button
-                      className="btn-delete"
-                      type="button"
-                      onClick={() => handleDelete(med.id)}
-                      disabled={deletingId === med.id}
-                    >
-                      {deletingId === med.id ? "Deleting..." : "🗑️ Delete"}
-                    </button>
-                  </td>
-                </tr>
+                      ) : (
+                        <span className="no-seal">No Seal</span>
+                      )}
+                    </td>
+                    <td>{new Date(med.expiry_date).toLocaleDateString()}</td>
+                    <td>
+                      <button className="btn-edit" type="button" onClick={() => handleEditClick(med)}>
+                        Edit
+                      </button>
+                      <button
+                        className="btn-delete"
+                        type="button"
+                        onClick={() => handleDelete(med.id)}
+                        disabled={deletingId === med.id}
+                      >
+                        {deletingId === med.id ? "Deleting..." : " Delete"}
+                      </button>
+                    </td>
+                  </tr>
+                  {editingMedicine?.id === med.id && (
+                    <tr className="edit-dropdown-row">
+                      <td colSpan={7}>
+                        <div className="form-card edit-medicine-card">
+                          <h4 style={{ fontWeight: 'bold' }}>Edit Medicine #{editingMedicine.id}</h4>
+                          <div className="form-grid">
+                            <label>
+                              Name
+                              <input
+                                type="text"
+                                value={editForm.name}
+                                onChange={(e) => handleEditChange("name", e.target.value)}
+                              />
+                            </label>
+                            <label>
+                              Description
+                              <textarea
+                                value={editForm.description}
+                                onChange={(e) => handleEditChange("description", e.target.value)}
+                              />
+                            </label>
+                            <label>
+                              Expiry Date
+                              <input
+                                type="date"
+                                value={editForm.expiry_date}
+                                onChange={(e) => handleEditChange("expiry_date", e.target.value)}
+                              />
+                            </label>
+                          </div>
+                          <div style={{ marginTop: 16, display: "flex", gap: 12, flexWrap: "wrap" }}>
+                            <button
+                              className="btn-primary"
+                              type="button"
+                              onClick={handleSaveMedicine}
+                              disabled={saving}
+                            >
+                              {saving ? "Saving..." : "Save Changes"}
+                            </button>
+                            <button className="btn-delete" type="button" onClick={handleCancelEdit}>
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
@@ -1607,7 +1617,7 @@ const PrescriptionsManagement: React.FC = () => {
 
   return (
     <div className="management-section">
-      <h3 style={{ fontWeight: 'bold' }}>📋 Prescription Management</h3>
+      <h3 style={{ fontWeight: 'bold' }}>Prescription Management</h3>
       {loading ? (
         <p>Loading prescriptions...</p>
       ) : prescriptions.length > 0 ? (
@@ -1654,7 +1664,7 @@ const PrescriptionsManagement: React.FC = () => {
                         onClick={() => handlePrintSeal(prescription.seal_code.code)}
                         title="Print QR code"
                       >
-                        🖨️ Print QR
+                        Print QR
                       </button>
                     ) : (
                       <span style={{ color: '#999', fontSize: '12px' }}>No seal</span>
@@ -1713,7 +1723,7 @@ const DeliveriesManagement: React.FC = () => {
   return (
     <div className="management-section">
       <div className="section-header">
-        <h3 style={{ fontWeight: 'bold' }}>🚚 Delivery Management</h3>
+        <h3 style={{ fontWeight: 'bold' }}>Delivery Management</h3>
         <div className="filter-btns">
           <button
             className={filter === "all" ? "active" : ""}
@@ -1772,13 +1782,13 @@ const DeliveriesManagement: React.FC = () => {
                           className="btn-approve"
                           onClick={() => handleStatusUpdate(delivery.id, "approved")}
                         >
-                          ✅ Approve
+                          Approve
                         </button>
                         <button
                           className="btn-reject"
                           onClick={() => handleStatusUpdate(delivery.id, "rejected")}
                         >
-                          ❌ Reject
+                          Reject
                         </button>
                       </>
                     )}
@@ -1824,7 +1834,7 @@ const InventoryManagement: React.FC = () => {
 
   return (
     <div className="management-section">
-      <h3 style={{ fontWeight: 'bold' }}>📦 Inventory Management</h3>
+      <h3 style={{ fontWeight: 'bold' }}>Inventory Management</h3>
       {loading ? (
         <p>Loading inventory...</p>
       ) : inventory.length > 0 ? (

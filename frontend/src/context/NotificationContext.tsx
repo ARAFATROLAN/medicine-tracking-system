@@ -1,4 +1,5 @@
-import { createContext, useState, useCallback, useEffect, ReactNode } from "react";
+import { createContext, useState, useCallback, useEffect } from "react";
+import type { ReactNode } from "react";
 
 export type NotificationType = "success" | "error" | "info";
 

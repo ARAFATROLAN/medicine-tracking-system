@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Repositories\PrescriptionRepository; // FIX: Capital A in App
+use App\Repositories\PrescriptionRepository;
 use Illuminate\Http\Request;
 use App\Http\Resources\PrescriptionResource;
 use App\Models\ActivityLog;
 use App\Models\Message;
 use App\Models\Notification;
+use App\Models\Pharmacist;
 use App\Models\User;
 use App\Services\QRCodeService;
 
@@ -288,11 +289,24 @@ class PrescriptionController extends Controller
                 ], 404);
             }
 
+            $user = $request->user();
+
+            if (!$user->hasRole('pharmacist')) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Only pharmacists are allowed to approve prescriptions'
+                ], 403);
+            }
+
+            $pharmacist = Pharmacist::where('email', $user->email)->first();
+            $updateData = ['status' => 'approved'];
+
+            if ($pharmacist) {
+                $updateData['pharmacist_id'] = $pharmacist->id;
+            }
+
             // Update prescription with approved status
-            $prescription->update([
-                'status' => 'approved',
-                'pharmacist_id' => $request->user()->id,
-            ]);
+            $prescription->update($updateData);
 
             // Log activity
             try {

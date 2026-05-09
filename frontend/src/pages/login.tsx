@@ -55,7 +55,7 @@ const Login: React.FC = () => {
         (error?.request && !error?.response)
       ) {
         loginErrorMessage =
-          "Unable to reach backend. Make sure the API server is running at http://localhost:8000.";
+          "Unable to reach backend. Make sure the API server is running at http://127.0.0.1:8000.";
       }
 
       setLoginError(loginErrorMessage);
@@ -101,7 +101,7 @@ const Login: React.FC = () => {
                   style={styles.eyeButton}
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? "🙈" : "👁"}
+                  {showPassword ? "🙈" : "👁"} 
                 </span>
               </div>
             </div>

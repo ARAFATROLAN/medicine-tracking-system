@@ -22,6 +22,7 @@ class PrescriptionResource extends JsonResource
                     'dosage' => $med->pivot?->dosage ?? 'N/A',
                 ];
             })->toArray() : [],
+            'status' => $this->status ?? 'pending',
             'notes' => $this->notes,
             'date' => $this->date,
             'created_at' => $this->created_at?->format('Y-m-d H:i') ?? 'N/A',
