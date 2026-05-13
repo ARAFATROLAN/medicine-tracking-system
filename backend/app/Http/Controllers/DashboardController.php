@@ -11,6 +11,7 @@ use App\Models\Patient;
 use App\Models\Doctor;
 use App\Models\Pharmacist;
 use App\Models\Admin;
+use App\Models\Role;
 use App\Models\ActivityLog;
 use App\Models\MedicineInventory;
 use App\Models\Delivery;
@@ -92,7 +93,7 @@ class DashboardController extends Controller
     public function users()
     {
         $users = User::with('roles')
-            ->select('id', 'name', 'email', 'contact', 'specialisation', 'created_at')
+            ->select('id', 'name', 'email', 'contact', 'specialisation', 'is_active', 'created_at')
             ->paginate(20);
         return response()->json($users);
     }
@@ -146,19 +147,36 @@ class DashboardController extends Controller
     /**
      * Delete user (admin only)
      */
-    public function deleteUser(User $user)
+    public function deleteUser($id)
     {
-        $userName = $user->name;
-        $user->delete();
+        try {
+            $user = User::find($id);
 
-        ActivityLog::create([
-            'user_id' => auth()->id(),
-            'action' => 'Deleted user: ' . $userName,
-            'entity_type' => 'User',
-            'entity_id' => $user->id,
-        ]);
+            if (!$user) {
+                return response()->json(['message' => 'User not found'], 404);
+            }
 
-        return response()->json(['message' => 'User deleted successfully']);
+            $userName = $user->name;
+            $userId = $user->id;
+
+            $result = $user->delete();
+
+            if ($result) {
+                ActivityLog::create([
+                    'user_id' => auth()->id(),
+                    'action' => 'Deleted user: ' . $userName,
+                    'entity_type' => 'User',
+                    'entity_id' => $userId,
+                ]);
+
+                return response()->json(['message' => 'User deleted successfully']);
+            } else {
+                return response()->json(['message' => 'Failed to delete user'], 500);
+            }
+        } catch (\Exception $e) {
+            \Log::error("Exception deleting user ID {$id}: " . $e->getMessage());
+            return response()->json(['message' => 'Error deleting user: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -167,55 +185,77 @@ class DashboardController extends Controller
     public function updateUser(Request $request, User $user)
     {
         $validated = $request->validate([
-            'specialisation' => 'required|string|in:Admin,Doctor,Pharmacist',
+            'specialisation' => 'sometimes|string|in:Admin,Doctor,Pharmacist',
+            'is_active' => 'sometimes|boolean',
         ]);
 
         try {
-            // Update user's specialisation
-            $user->update([
-                'specialisation' => $validated['specialisation']
-            ]);
+            $updates = [];
 
-            // Update role relationship
-            $roleName = match(strtolower($validated['specialisation'])) {
-                'admin' => 'Admin',
-                'doctor' => 'Doctor',
-                'pharmacist' => 'Pharmacist',
-                default => 'Doctor'
-            };
+            if (isset($validated['specialisation'])) {
+                $updates['specialisation'] = $validated['specialisation'];
 
-            $role = Role::firstOrCreate(['name' => $roleName]);
+                // Update role relationship
+                $roleName = match(strtolower($validated['specialisation'])) {
+                    'admin' => 'Admin',
+                    'doctor' => 'Doctor',
+                    'pharmacist' => 'Pharmacist',
+                    default => 'Doctor'
+                };
 
-            // Remove existing role assignments
-            DB::table('user_roles')->where('user_id', $user->id)->delete();
+                $role = Role::firstOrCreate(['name' => $roleName]);
 
-            // Assign new role
-            DB::table('user_roles')->insert([
-                'user_id' => $user->id,
-                'role_id' => $role->id,
-            ]);
+                // Remove existing role assignments
+                DB::table('user_roles')->where('user_id', $user->id)->delete();
 
-            ActivityLog::create([
-                'user_id' => auth()->id(),
-                'action' => 'Updated user role: ' . $user->name . ' to ' . $validated['specialisation'],
-                'entity_type' => 'User',
-                'entity_id' => $user->id,
-            ]);
+                // Assign new role
+                DB::table('user_roles')->insert([
+                    'user_id' => $user->id,
+                    'role_id' => $role->id,
+                ]);
+            }
+
+            if (isset($validated['is_active'])) {
+                $updates['is_active'] = $validated['is_active'];
+            }
+
+            if (!empty($updates)) {
+                $user->update($updates);
+            }
+
+            $action = '';
+            if (isset($validated['specialisation']) && isset($validated['is_active'])) {
+                $action = 'Updated user: ' . $user->name . ' role to ' . $validated['specialisation'] . ' and ' . ($validated['is_active'] ? 'activated' : 'deactivated');
+            } elseif (isset($validated['specialisation'])) {
+                $action = 'Updated user role: ' . $user->name . ' to ' . $validated['specialisation'];
+            } elseif (isset($validated['is_active'])) {
+                $action = ($validated['is_active'] ? 'Activated' : 'Deactivated') . ' user: ' . $user->name;
+            }
+
+            if ($action) {
+                ActivityLog::create([
+                    'user_id' => auth()->id(),
+                    'action' => $action,
+                    'entity_type' => 'User',
+                    'entity_id' => $user->id,
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => 'User role updated successfully',
+                'message' => 'User updated successfully',
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
                     'specialisation' => $user->specialisation,
+                    'is_active' => $user->is_active,
                 ]
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update user role',
+                'message' => 'Failed to update user',
                 'error' => $e->getMessage()
             ], 500);
         }

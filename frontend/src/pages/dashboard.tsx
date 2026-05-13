@@ -1,6 +1,7 @@
 // src/pages/AdminDashboard.tsx
 import React, { useEffect, useState } from "react";
 import api from "../Services/api";
+import ReportsSection from "../components/ReportsSection";
 
 interface Stats {
   users: number;
@@ -84,7 +85,11 @@ const AdminDashboard: React.FC = () => {
 
         {/* HEADER */}
         <div style={styles.header}>
-          <h1>Hospital Control Center</h1>
+          <div style={{flex: 1}}></div>
+          <h1 style={{fontSize: '24px', margin: 0}}>Hospital Control Center</h1>
+          <div style={{display: 'flex', gap: '10px'}}>
+            <button style={styles.button}>Notification</button>
+          </div>
         </div>
 
         {/*  SYSTEM OVERVIEW */}
@@ -129,6 +134,10 @@ const AdminDashboard: React.FC = () => {
         </div>
 
       </main>
+
+      {/* Reports Section */}
+      <ReportsSection userRole="patient" />
+
     </div>
   );
 };
@@ -155,7 +164,9 @@ const styles: any = {
     background: "#f9fafb"
   },
   header: {
-    marginBottom: 20
+    marginBottom: 20,
+    display: 'flex',
+    alignItems: 'center'
   },
   grid: {
     display: "grid",
@@ -174,5 +185,13 @@ const styles: any = {
     padding: 20,
     marginBottom: 20,
     borderRadius: 10
+  },
+  button: {
+    padding: '8px 16px',
+    background: '#d89127',
+    color: 'white',
+    border: 'none',
+    borderRadius: 5,
+    cursor: 'pointer'
   }
 };

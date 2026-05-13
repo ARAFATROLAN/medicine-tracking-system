@@ -3,7 +3,7 @@
 import axios from "axios";
 
 // Base API URL
-const baseURL: string = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1";
+export const apiBaseURL: string = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -29,12 +29,12 @@ const retryRequest = async <T>(fn: () => Promise<T>, retries = 1, delayMs = 250)
 
 // Create axios instance with connection optimization
 const axiosInstance = axios.create({
-  baseURL: baseURL,
+  baseURL: apiBaseURL,
   headers: {
     "Content-Type": "application/json",
   },
   // Connection optimization settings
-  timeout: 30000, // 30s timeout
+  timeout: 10000, // 10s timeout for quicker feedback when the API is unreachable
   withCredentials: false,
 });
 
@@ -67,6 +67,10 @@ api.interceptors.response.use(
       requestUrl.includes("/login") ||
       requestUrl.includes("/register") ||
       requestUrl.includes("/user");
+
+    if (!error.response) {
+      error.message = `Unable to reach backend at ${apiBaseURL}. Please make sure the API server is running.`;
+    }
 
     if (error.response?.status === 401 && !isAuthRequest) {
       localStorage.removeItem("token");

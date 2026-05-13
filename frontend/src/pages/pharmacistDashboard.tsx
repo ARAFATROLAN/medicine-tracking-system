@@ -3,6 +3,7 @@ import React, { useState, useEffect, useContext } from "react";
 import { FaBell } from "react-icons/fa";
 import { Bar } from "react-chartjs-2";
 import AnimatedNumber from "../components/AnimatedNumber";
+import ReportsSection from "../components/ReportsSection";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -77,6 +78,12 @@ const PharmacistDashboard: React.FC = () => {
   const [approvalStatus, setApprovalStatus] = useState<{ [key: number]: string }>({});
   const [unreadCount, setUnreadCount] = useState(0);
   const [showAllInventory, setShowAllInventory] = useState(false);
+  const [showMoreLowStock, setShowMoreLowStock] = useState(false);
+  const [showAllPrescriptions, setShowAllPrescriptions] = useState(false);
+  const [showApprovedPrescriptions, setShowApprovedPrescriptions] = useState(false);
+  const [showStockChart, setShowStockChart] = useState(false);
+  const [stockSearch, setStockSearch] = useState("");
+  const [hoveredTab, setHoveredTab] = useState<string | null>(null);
   const [prescriptionPopup, setPrescriptionPopup] = useState<{
     notificationId: number;
     prescriptionId: number;
@@ -169,7 +176,8 @@ const PharmacistDashboard: React.FC = () => {
 
   // Calculate stats
   const totalMedicines = medicines.length;
-  const lowStockMedicines = medicines.filter(med => med.quantity < 50).length;
+  const lowStockItems = medicines.filter(med => med.quantity < 50);
+  const lowStockMedicines = lowStockItems.length;
   const expiringSoonMedicines = medicines.filter(med => {
     const expiryDate = new Date(med.expiry_date);
     const now = new Date();
@@ -180,6 +188,9 @@ const PharmacistDashboard: React.FC = () => {
 
   // Chart data
   const inventoryDisplay = showAllInventory ? medicines : medicines.slice(0, 10);
+  const stockSearchResults = stockSearch.trim()
+    ? medicines.filter(med => med.name.toLowerCase().includes(stockSearch.trim().toLowerCase()))
+    : [];
 
   const stockChartData = {
     labels: medicines.slice(0, 10).map(med => med.name.length > 15 ? med.name.substring(0, 15) + '...' : med.name),
@@ -358,8 +369,11 @@ const PharmacistDashboard: React.FC = () => {
           style={{
             ...styles.tabButton,
             ...(activeTab === "inventory" ? styles.tabButtonActive : styles.tabButtonInactive),
+            ...((hoveredTab === "inventory" && activeTab !== "inventory") ? styles.tabButtonHover : {}),
           }}
           onClick={() => setActiveTab("inventory")}
+          onMouseEnter={() => setHoveredTab("inventory")}
+          onMouseLeave={() => setHoveredTab(null)}
         >
           Inventory
         </button>
@@ -367,8 +381,11 @@ const PharmacistDashboard: React.FC = () => {
           style={{
             ...styles.tabButton,
             ...(activeTab === "register" ? styles.tabButtonActive : styles.tabButtonInactive),
+            ...((hoveredTab === "register" && activeTab !== "register") ? styles.tabButtonHover : {}),
           }}
           onClick={() => setActiveTab("register")}
+          onMouseEnter={() => setHoveredTab("register")}
+          onMouseLeave={() => setHoveredTab(null)}
         >
           Register Medicine
         </button>
@@ -376,8 +393,11 @@ const PharmacistDashboard: React.FC = () => {
           style={{
             ...styles.tabButton,
             ...(activeTab === "deliveries" ? styles.tabButtonActive : styles.tabButtonInactive),
+            ...((hoveredTab === "deliveries" && activeTab !== "deliveries") ? styles.tabButtonHover : {}),
           }}
           onClick={() => setActiveTab("deliveries")}
+          onMouseEnter={() => setHoveredTab("deliveries")}
+          onMouseLeave={() => setHoveredTab(null)}
         >
           Manage Deliveries
         </button>
@@ -385,8 +405,11 @@ const PharmacistDashboard: React.FC = () => {
           style={{
             ...styles.tabButton,
             ...(activeTab === "prescriptions" ? styles.tabButtonActive : styles.tabButtonInactive),
+            ...((hoveredTab === "prescriptions" && activeTab !== "prescriptions") ? styles.tabButtonHover : {}),
           }}
           onClick={() => setActiveTab("prescriptions")}
+          onMouseEnter={() => setHoveredTab("prescriptions")}
+          onMouseLeave={() => setHoveredTab(null)}
         >
           Pending Prescriptions
         </button>
@@ -500,7 +523,7 @@ const PharmacistDashboard: React.FC = () => {
       <div style={styles.section}>
         <h2 style={{ fontWeight: 'bold' }}>Low Stock Alerts</h2>
         <div style={styles.alertsContainer}>
-          {medicines.filter(med => med.quantity < 50).slice(0, 6).map((medicine) => (
+          {(showMoreLowStock ? lowStockItems : lowStockItems.slice(0, 6)).map((medicine) => (
             <div key={medicine.id} style={styles.alertCard}>
               <h4 style={{ fontWeight: 'bold' }}>⚠ {medicine.name}</h4>
               <p>Only {medicine.quantity} units remaining</p>
@@ -511,6 +534,21 @@ const PharmacistDashboard: React.FC = () => {
             <p style={{ textAlign: "center", color: "#666", width: "100%" }}>No low stock alerts at this time.</p>
           )}
         </div>
+        {lowStockMedicines > 6 && (
+          <div style={{ marginTop: '18px', textAlign: 'right' }}>
+            <button
+              type="button"
+              onClick={() => setShowMoreLowStock(prev => !prev)}
+              style={{
+                ...styles.actionBtn,
+                backgroundColor: showMoreLowStock ? '#6b7280' : '#3b82f6',
+                padding: '10px 18px',
+              }}
+            >
+              {showMoreLowStock ? 'Show Less' : 'View More'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Pending Deliveries */}
@@ -549,7 +587,7 @@ const PharmacistDashboard: React.FC = () => {
             <p style={{ textAlign: "center", color: "#666", padding: "20px" }}>No pending deliveries.</p>
           )}
         </div>
-        {pendingDeliveries > 5 && (
+        {pendingDeliveries > 0 && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
             <button
               type="button"
@@ -564,7 +602,7 @@ const PharmacistDashboard: React.FC = () => {
                 fontWeight: 600,
               }}
             >
-              View More Pending Deliveries
+              View More
             </button>
           </div>
         )}
@@ -572,28 +610,81 @@ const PharmacistDashboard: React.FC = () => {
 
       {/* Stock Chart */}
       <div style={styles.section}>
-        <h2 style={{ fontWeight: 'bold' }}>Stock Levels Overview</h2>
-        <div style={styles.chartContainer}>
-          <Bar
-            data={stockChartData}
-            options={{
-              responsive: true,
-              plugins: {
-                legend: { position: "top" as const },
-                title: { display: true, text: "Top 10 Medicines Stock Levels" },
-              },
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  title: {
-                    display: true,
-                    text: "Quantity"
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <h2 style={{ fontWeight: 'bold', margin: 0 }}>Stock Levels Overview</h2>
+          <button
+            style={{
+              ...styles.actionBtn,
+              backgroundColor: showStockChart ? '#6b7280' : '#8b5cf6',
+              padding: '10px 18px',
+            }}
+            onClick={() => setShowStockChart(prev => !prev)}
+          >
+            {showStockChart ? 'Hide Chart' : 'View Chart'}
+          </button>
+        </div>
+        <div style={styles.stockSearchRow}>
+          <input
+            type="text"
+            value={stockSearch}
+            onChange={(e) => setStockSearch(e.target.value)}
+            placeholder="Search medicine by name..."
+            style={styles.stockSearchInput}
+          />
+          {stockSearch.trim().length > 0 && (
+            <div style={styles.stockSearchInfo}>
+              {stockSearchResults.length > 0 ? (
+                <>
+                  <p style={{ margin: 0, fontWeight: 700 }}>
+                    Stock level for "{stockSearchResults[0].name}": {stockSearchResults[0].quantity} units
+                  </p>
+                  {stockSearchResults.length > 1 && (
+                    <p style={{ margin: '8px 0 0', color: '#64748b' }}>
+                      See {stockSearchResults.length} matches below.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p style={{ margin: 0, color: '#64748b' }}>
+                  No medicine found for "{stockSearch}".
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+        {stockSearch.trim().length > 0 && stockSearchResults.length > 1 && (
+          <div style={styles.stockSearchResultList}>
+            {stockSearchResults.slice(0, 5).map((medicine) => (
+              <div key={medicine.id} style={styles.stockSearchResultItem}>
+                <span>{medicine.name}</span>
+                <span style={{ fontWeight: 700 }}>{medicine.quantity} units</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {showStockChart && (
+          <div style={styles.chartContainer}>
+            <Bar
+              data={stockChartData}
+              options={{
+                responsive: true,
+                plugins: {
+                  legend: { position: "top" as const },
+                  title: { display: true, text: "Top 10 Medicines Stock Levels" },
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    title: {
+                      display: true,
+                      text: "Quantity"
+                    }
                   }
                 }
-              }
-            }}
-          />
-        </div>
+              }}
+            />
+          </div>
+        )}
       </div>
         </>
       )}
@@ -727,73 +818,160 @@ const PharmacistDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Pending Prescriptions Table */}
+          {/* Prescriptions Section */}
           <div style={styles.section}>
-            <h2 style={{ fontWeight: 'bold' }}>Pending Prescriptions</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              <h2 style={{ fontWeight: 'bold', margin: 0 }}>
+                {showApprovedPrescriptions ? 'Approved Prescriptions' : 'Pending Prescriptions'}
+              </h2>
+              <button
+                style={{
+                  ...styles.actionBtn,
+                  backgroundColor: showApprovedPrescriptions ? '#6b7280' : '#10b981',
+                  padding: '10px 18px',
+                }}
+                onClick={() => {
+                  setShowApprovedPrescriptions(prev => !prev);
+                  setShowAllPrescriptions(false);
+                }}
+              >
+                {showApprovedPrescriptions ? 'Back to Pending' : 'Approved Prescriptions'}
+              </button>
+            </div>
             <div style={styles.tableContainer}>
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Patient Name</th>
-                    <th>Doctor Name</th>
-                    <th>Medicines</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {prescriptions.map((prescription) => (
-                    <tr key={prescription.id}>
-                      <td>#{prescription.id}</td>
-                      <td>{prescription.patient_name}</td>
-                      <td>{prescription.doctor_name}</td>
-                      <td>
-                        {prescription.medicines?.map((med, idx) => (
-                          <span key={idx}>
-                            {med.name} ({med.quantity}){idx < prescription.medicines.length - 1 ? ", " : ""}
-                          </span>
+              {showApprovedPrescriptions ? (
+                <>
+                  {prescriptions.filter(p => p.status === "approved").length === 0 ? (
+                    <p style={{ textAlign: "center", color: "#666", padding: "20px" }}>No approved prescriptions yet.</p>
+                  ) : (
+                    <table style={styles.table}>
+                      <thead>
+                        <tr>
+                          <th style={styles.tableHeader}>ID</th>
+                          <th style={styles.tableHeader}>Patient Name</th>
+                          <th style={styles.tableHeader}>Doctor Name</th>
+                          <th style={styles.tableHeader}>Medicines</th>
+                          <th style={styles.tableHeader}>Date</th>
+                          <th style={styles.tableHeader}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {prescriptions.filter(p => p.status === "approved").map((prescription, index) => (
+                          <tr key={prescription.id} style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                            <td style={styles.tableCell}>#{prescription.id}</td>
+                            <td style={styles.tableCell}>{prescription.patient_name}</td>
+                            <td style={styles.tableCell}>{prescription.doctor_name}</td>
+                            <td style={styles.tableCell}>
+                              {prescription.medicines?.map((med, idx) => (
+                                <div key={idx}>
+                                  {med.name}: {med.quantity} {med.quantity > 1 ? 'boxes' : 'box'}
+                                </div>
+                              ))}
+                            </td>
+                            <td style={styles.tableCell}>{new Date(prescription.created_at).toLocaleDateString()}</td>
+                            <td style={styles.tableCell}>
+                              <span style={{
+                                ...styles.statusBadge,
+                                backgroundColor: '#22c55e',
+                                color: 'white'
+                              }}>
+                                Approved
+                              </span>
+                            </td>
+                          </tr>
                         ))}
-                      </td>
-                      <td>
-                        <span style={{
-                          ...styles.statusBadge,
-                          backgroundColor: prescription.status === "pending" ? "#f59e0b" : 
-                                           prescription.status === "approved" ? "#22c55e" : 
-                                           "#ef4444",
-                          color: "white"
-                        }}>
-                          {prescription.status}
-                        </span>
-                      </td>
-                      <td>{new Date(prescription.created_at).toLocaleDateString()}</td>
-                      <td>
-                        {prescription.status === "pending" && (
+                      </tbody>
+                    </table>
+                  )}
+                </>
+              ) : (
+                (() => {
+                  const pendingPrescriptions = prescriptions.filter(p => p.status === "pending");
+                  const displayedPrescriptions = showAllPrescriptions ? pendingPrescriptions : pendingPrescriptions.slice(0, 5);
+                  return (
+                    <>
+                      <table style={styles.table}>
+                        <thead>
+                          <tr>
+                            <th style={styles.tableHeader}>ID</th>
+                            <th style={styles.tableHeader}>Patient Name</th>
+                            <th style={styles.tableHeader}>Doctor Name</th>
+                            <th style={styles.tableHeader}>Medicines</th>
+                            <th style={styles.tableHeader}>Date</th>
+                            <th style={styles.tableHeader}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {displayedPrescriptions.map((prescription, index) => (
+                            <tr key={prescription.id} style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                              <td style={styles.tableCell}>#{prescription.id}</td>
+                              <td style={styles.tableCell}>{prescription.patient_name}</td>
+                              <td style={styles.tableCell}>{prescription.doctor_name}</td>
+                              <td style={styles.tableCell}>
+                                {prescription.medicines?.map((med, idx) => (
+                                  <div key={idx}>
+                                    {med.name}: {med.quantity} {med.quantity > 1 ? 'boxes' : 'box'}
+                                  </div>
+                                ))}
+                              </td>
+                              <td style={styles.tableCell}>{new Date(prescription.created_at).toLocaleDateString()}</td>
+                              <td style={styles.tableCell}>
+                                <button
+                                  style={{ ...styles.actionBtn, backgroundColor: "#22c55e" }}
+                                  onClick={() => handleApprovePrescription(prescription.id)}
+                                  disabled={approvalStatus[prescription.id] === "pending"}
+                                >
+                                  {approvalStatus[prescription.id] === "pending" ? "..." : "Approve"}
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {pendingPrescriptions.length === 0 && (
+                        <p style={{ textAlign: "center", color: "#666", padding: "20px" }}>No pending prescriptions.</p>
+                      )}
+                      {pendingPrescriptions.length > 5 && !showAllPrescriptions && (
+                        <div style={{ textAlign: "center", marginTop: "15px", paddingBottom: "10px" }}>
                           <button
-                            style={{ ...styles.actionBtn, backgroundColor: "#22c55e" }}
-                            onClick={() => handleApprovePrescription(prescription.id)}
-                            disabled={approvalStatus[prescription.id] === "pending"}
+                            style={{
+                              ...styles.actionBtn,
+                              backgroundColor: "#3b82f6",
+                              padding: "8px 20px",
+                              fontSize: "0.9rem"
+                            }}
+                            onClick={() => setShowAllPrescriptions(true)}
                           >
-                            {approvalStatus[prescription.id] === "pending" ? "..." : "Approve"}
+                            View More ({pendingPrescriptions.length - 5} more)
                           </button>
-                        )}
-                        {prescription.status !== "pending" && (
-                          <span style={{ color: "#666" }}>—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {prescriptions.length === 0 && (
-                <p style={{ textAlign: "center", color: "#666", padding: "20px" }}>No prescriptions.</p>
+                        </div>
+                      )}
+                      {showAllPrescriptions && pendingPrescriptions.length > 5 && (
+                        <div style={{ textAlign: "center", marginTop: "15px", paddingBottom: "10px" }}>
+                          <button
+                            style={{
+                              ...styles.actionBtn,
+                              backgroundColor: "#6b7280",
+                              padding: "8px 20px",
+                              fontSize: "0.9rem"
+                            }}
+                            onClick={() => setShowAllPrescriptions(false)}
+                          >
+                            Show Less
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()
               )}
             </div>
           </div>
         </>
       )}
 
+      {/* Reports Section */}
+      <ReportsSection userRole="pharmacist" />
     </div>
   );
 };
@@ -818,6 +996,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   tabContainer: {
     display: "flex",
+    justifyContent: "center",
     gap: "10px",
     marginBottom: "30px",
     borderBottom: "2px solid #e2e8f0",
@@ -825,11 +1004,11 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   tabButton: {
     padding: "12px 24px",
-    fontSize: "2rem",
+    fontSize: "1.1rem",
     border: "none",
     cursor: "pointer",
     borderRadius: "8px 8px 0 0",
-    transition: "all 0.3s",
+    transition: "all 0.2s ease",
     fontWeight: "600",
   },
   tabButtonActive: {
@@ -841,6 +1020,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: "#ffffff",
     color: "#64748b",
     border: "1px solid #e2e8f0",
+  },
+  tabButtonHover: {
+    transform: "translateY(-2px)",
+    boxShadow: "0 6px 14px rgba(15, 23, 42, 0.12)",
+    backgroundColor: "#f8fafe",
   },
   cards: {
     display: "grid",
@@ -932,6 +1116,45 @@ const styles: { [key: string]: React.CSSProperties } = {
   actionButtons: {
     display: "flex",
     gap: "8px",
+  },
+  stockSearchRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: "12px",
+    marginTop: "20px",
+  },
+  stockSearchInput: {
+    flex: "1 1 320px",
+    minWidth: "220px",
+    padding: "12px 14px",
+    borderRadius: "12px",
+    border: "1px solid #cbd5e1",
+    background: "#f8fafc",
+    color: "#0f172a",
+    fontSize: "0.95rem",
+  },
+  stockSearchInfo: {
+    flex: "1 1 280px",
+    minWidth: "220px",
+    padding: "14px 16px",
+    borderRadius: "12px",
+    background: "#eef2ff",
+    border: "1px solid #c7d2fe",
+  },
+  stockSearchResultList: {
+    marginTop: "16px",
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0",
+    background: "#f8fafc",
+    padding: "14px",
+  },
+  stockSearchResultItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "10px 0",
+    borderBottom: "1px solid #e5e7eb",
   },
   actionBtn: {
     padding: "6px 12px",

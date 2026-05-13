@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaBell } from "react-icons/fa";
-import api from "../Services/api";
+import api, { apiBaseURL } from "../Services/api";
 import AnimatedNumber from "../components/AnimatedNumber";
 import UserRegistrationForm from "../components/UserRegistrationForm";
 import VehicleRegistration from "./Admin/VehicleRegistration";
 import VehicleTracking from "./Admin/VehicleTracking";
+import ReportsSection from "../components/ReportsSection";
 import { MessagePanelContext } from "../layout/DashboardLayout";
 import { NotificationContext } from "../context/NotificationContext";
 import "./AdminDashboard.css";
@@ -32,7 +33,7 @@ interface SystemHealth {
 }
 
 interface Management {
-  activeTab: "overview" | "users" | "medicines" | "prescriptions" | "deliveries" | "inventory" | "hospitals" | "vehicles";
+  activeTab: "overview" | "users" | "medicines" | "prescriptions" | "deliveries" | "hospitals" | "vehicles";
 }
 
 interface Medicine {
@@ -40,17 +41,6 @@ interface Medicine {
   name: string;
   quantity: number;
   expiry_date: string;
-}
-
-interface InventoryItem {
-  id: number;
-  medicine_id: number;
-  quantity: number;
-  expiry_date: string;
-  location?: string;
-  medicine?: {
-    name?: string;
-  };
 }
 
 // ============ MAIN COMPONENT ============
@@ -67,6 +57,7 @@ const AdminDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [showAllActivities, setShowAllActivities] = useState(false);
+  const [showRecentActivity, setShowRecentActivity] = useState(false);
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityError, setActivityError] = useState<string | null>(null);
   const [showVehicleRegistration, setShowVehicleRegistration] = useState(false);
@@ -82,6 +73,7 @@ const AdminDashboard: React.FC = () => {
     health?.database_status === "healthy" && health?.api_status === "healthy";
 
   const lowStockItems = medicines.filter((med) => med.quantity < 50);
+  const expiredItems = medicines.filter((med) => new Date(med.expiry_date) < new Date());
 
   // ============ CHECK ADMIN ROLE ============
   useEffect(() => {
@@ -179,7 +171,7 @@ const AdminDashboard: React.FC = () => {
       if (err.response?.status === 401) {
         navigate("/");
       } else {
-        const errorMsg = err.response?.data?.message || err.message || "Failed to load dashboard stats";
+        const errorMsg = err.response?.data?.message || err.message || `Failed to load dashboard stats from ${apiBaseURL}`;
         setError(`Failed to load dashboard data: ${errorMsg}`);
       }
     }
@@ -400,7 +392,7 @@ const AdminDashboard: React.FC = () => {
             className={`admin-tab ${management.activeTab === "medicines" ? "active" : ""}`}
             onClick={() => setManagement({ ...management, activeTab: "medicines" })}
           >
-            Medicines
+            Inventory
           </button>
           <button
             className={`admin-tab ${management.activeTab === "prescriptions" ? "active" : ""}`}
@@ -413,12 +405,6 @@ const AdminDashboard: React.FC = () => {
             onClick={() => setManagement({ ...management, activeTab: "deliveries" })}
           >
              Deliveries
-          </button>
-          <button
-            className={`admin-tab ${management.activeTab === "inventory" ? "active" : ""}`}
-            onClick={() => setManagement({ ...management, activeTab: "inventory" })}
-          >
-            Inventory
           </button>
           <button
             className={`admin-tab ${management.activeTab === "hospitals" ? "active" : ""}`}
@@ -466,17 +452,17 @@ const AdminDashboard: React.FC = () => {
               />
               <MetricCard
                 title="Low Stock Items"
-                value={stats?.low_stock_medicines || 0}
+                value={lowStockItems.length}
                 icon=" "
                 color="#f97316"
-                highlight={stats?.low_stock_medicines! > 0}
+                highlight={lowStockItems.length > 0}
               />
               <MetricCard
                 title="Expired Medicines"
-                value={stats?.expired_medicines || 0}
+                value={expiredItems.length}
                 icon=" "
                 color="#dc2626"
-                highlight={stats?.expired_medicines! > 0}
+                highlight={expiredItems.length > 0}
               />
             </section>
 
@@ -486,19 +472,43 @@ const AdminDashboard: React.FC = () => {
                 {lowStockItems.length > 0 ? (
                   lowStockItems.slice(0, 6).map((medicine) => (
                     <div key={medicine.id} className="low-stock-card">
-                      <h4 style={{ fontWeight: 'bold' }}> {medicine.name}</h4>
+                      <h4 style={{ fontWeight: 'bold' }}>{medicine.name}</h4>
                       <p>
                         {medicine.quantity === 0
                           ? `${medicine.name} is finished`
-                          : `Only ${medicine.quantity} units remaining`
+                          : `${medicine.quantity} units remaining`
                         }
                       </p>
-                      <small>Reorder recommended</small>
+                      <small>Expires: {new Date(medicine.expiry_date).toLocaleDateString()}</small>
                     </div>
                   ))
                 ) : (
                   <div className="low-stock-empty">
                     <p>No low stock items at this time.</p>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="expired-medicines-section">
+              <h3 style={{ fontWeight: 'bold' }}>Expired Medicines</h3>
+              <div className="low-stock-grid">
+                {expiredItems.length > 0 ? (
+                  expiredItems.slice(0, 6).map((medicine) => (
+                    <div key={medicine.id} className="low-stock-card" style={{ borderColor: '#f87171', background: '#fef2f2' }}>
+                      <h4 style={{ fontWeight: 'bold' }}>{medicine.name}</h4>
+                      <p>
+                        {medicine.quantity === 0
+                          ? `${medicine.name} is out of stock`
+                          : `${medicine.quantity} units expired`
+                        }
+                      </p>
+                      <small>Expired on {new Date(medicine.expiry_date).toLocaleDateString()}</small>
+                    </div>
+                  ))
+                ) : (
+                  <div className="low-stock-empty">
+                    <p>No expired medicines found.</p>
                   </div>
                 )}
               </div>
@@ -511,11 +521,6 @@ const AdminDashboard: React.FC = () => {
                 {stats?.low_stock_medicines! > 0 && (
                   <div className="alert alert-warning">
                     <strong>Low Stock Warning:</strong> {stats?.low_stock_medicines} medicines below 10 units
-                  </div>
-                )}
-                {stats?.expired_medicines! > 0 && (
-                  <div className="alert alert-danger">
-                    <strong>Expired Medicines:</strong> {stats?.expired_medicines} medicines have expired
                   </div>
                 )}
                 {stats?.pending_deliveries! > 0 && (
@@ -531,26 +536,45 @@ const AdminDashboard: React.FC = () => {
             <section className="recent-activity">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
                 <h3> Recent Activity (Last 10)</h3>
-                {stats?.recent_activities && stats.recent_activities.length >= 10 && (
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                   <button
                     type="button"
-                    onClick={() => setShowAllActivities((prev) => !prev)}
+                    onClick={() => setShowRecentActivity((prev) => !prev)}
                     style={{
                       padding: '8px 14px',
                       borderRadius: '9999px',
                       border: '1px solid #3b82f6',
-                      background: showAllActivities ? '#eff6ff' : '#3b82f6',
-                      color: showAllActivities ? '#1d4ed8' : '#ffffff',
+                      background: showRecentActivity ? '#eff6ff' : '#3b82f6',
+                      color: showRecentActivity ? '#1d4ed8' : '#ffffff',
                       cursor: 'pointer',
                       fontWeight: 600,
                     }}
                   >
-                    {showAllActivities ? 'Show Less' : 'View More'}
+                    {showRecentActivity ? 'Hide Activity' : 'Show Activity'}
                   </button>
-                )}
+                  {showRecentActivity && stats?.recent_activities && stats.recent_activities.length >= 10 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllActivities((prev) => !prev)}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: '9999px',
+                        border: '1px solid #3b82f6',
+                        background: showAllActivities ? '#eff6ff' : '#3b82f6',
+                        color: showAllActivities ? '#1d4ed8' : '#ffffff',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {showAllActivities ? 'Show Less' : 'View More'}
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="activity-list">
-                {activityLoading ? (
+                {!showRecentActivity ? (
+                  <p className="no-data">Click the button above to display recent activity.</p>
+                ) : activityLoading ? (
                   <p>Loading activities...</p>
                 ) : ((showAllActivities ? activityLogs : stats?.recent_activities)?.length ?? 0) > 0 ? (
                   (showAllActivities ? activityLogs : stats?.recent_activities).map((activity, idx) => (
@@ -576,14 +600,14 @@ const AdminDashboard: React.FC = () => {
         {/* ============ USERS TAB ============ */}
         {management.activeTab === "users" && (
           <div className="tab-content">
-            <UsersManagement />
+            <UsersManagement onRefresh={fetchStats} />
           </div>
         )}
 
         {/* ============ MEDICINES TAB ============ */}
         {management.activeTab === "medicines" && (
           <div className="tab-content">
-            <MedicinesManagement />
+            <MedicinesManagement onRefresh={fetchStats} />
           </div>
         )}
 
@@ -597,21 +621,14 @@ const AdminDashboard: React.FC = () => {
         {/* ============ DELIVERIES TAB ============ */}
         {management.activeTab === "deliveries" && (
           <div className="tab-content">
-            <DeliveriesManagement />
-          </div>
-        )}
-
-        {/* ============ INVENTORY TAB ============ */}
-        {management.activeTab === "inventory" && (
-          <div className="tab-content">
-            <InventoryManagement />
+            <DeliveriesManagement onRefresh={fetchStats} />
           </div>
         )}
 
         {/* ============ HOSPITALS TAB ============ */}
         {management.activeTab === "hospitals" && (
           <div className="tab-content">
-            <HospitalManagement />
+            <HospitalManagement onRefresh={fetchStats} />
           </div>
         )}
 
@@ -651,6 +668,8 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
       </main>
+
+      <ReportsSection userRole="admin" />
     </div>
   );
 };
@@ -712,7 +731,7 @@ const ProgressCard: React.FC<{
 );
 
 // ============ USERS MANAGEMENT COMPONENT ============
-const UsersManagement: React.FC = () => {
+const UsersManagement: React.FC<{ onRefresh?: () => Promise<void> }> = ({ onRefresh }) => {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, _setPage] = useState(1);
@@ -722,16 +741,37 @@ const UsersManagement: React.FC = () => {
     specialisation: "",
   });
   const [updating, setUpdating] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
+  const [togglingUserId, setTogglingUserId] = useState<number | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const editDropdownRef = useRef<HTMLDivElement | null>(null);
   const notification = useContext(NotificationContext);
 
   const fetchUsers = async () => {
     setLoading(true);
+    setFetchError(null);
+
     try {
-      const data = await api.fetchUsers(page);
-      setUsers(data.data || data);
-    } catch (err) {
+      const response = await api.fetchUsers(page);
+      const usersData = Array.isArray(response?.data)
+        ? response.data
+        : Array.isArray(response)
+        ? response
+        : Array.isArray(response?.users)
+        ? response.users
+        : [];
+
+      if (!Array.isArray(usersData)) {
+        console.error("Unexpected users payload:", response);
+        setFetchError("Unexpected response from server while loading users.");
+        setUsers([]);
+      } else {
+        setUsers(usersData);
+      }
+    } catch (err: any) {
       console.error("Failed to fetch users:", err);
+      setFetchError(err?.response?.data?.message || err?.message || "Failed to load users.");
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -762,7 +802,8 @@ const UsersManagement: React.FC = () => {
     try {
       await api.updateUser(editingUser.id, editForm);
       setEditingUser(null);
-      fetchUsers(); // Refresh the list
+      await fetchUsers(); // Refresh the list
+      await onRefresh?.();
       notification?.notify({ type: "success", message: "User role updated successfully!" });
     } catch (err: any) {
       console.error("Failed to update user:", err);
@@ -777,21 +818,52 @@ const UsersManagement: React.FC = () => {
     setEditForm({ specialisation: "" });
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
-      try {
-        await api.deleteUser(id);
-        setUsers(users.filter(u => u.id !== id));
-        notification?.notify({ type: "success", message: "User deleted successfully" });
-      } catch (err) {
-        notification?.notify({ type: "error", message: "Failed to delete user" });
-      }
+  const handleToggleUserStatus = async (user: any) => {
+    setTogglingUserId(user.id);
+    try {
+      await api.updateUser(user.id, { is_active: !user.is_active });
+      await fetchUsers(); // Refresh the list
+      await onRefresh?.();
+      notification?.notify({ 
+        type: "success", 
+        message: `User ${user.name} has been ${!user.is_active ? 'activated' : 'deactivated'} successfully!` 
+      });
+    } catch (err: any) {
+      console.error("Failed to toggle user status:", err);
+      notification?.notify({ 
+        type: "error", 
+        message: "Failed to update user status. Please try again." 
+      });
+    } finally {
+      setTogglingUserId(null);
     }
   };
 
-  const handleRegistrationSuccess = () => {
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) {
+      return;
+    }
+
+    setDeletingUserId(id);
+
+    try {
+      await api.deleteUser(id);
+      await fetchUsers();
+      await onRefresh?.();
+      notification?.notify({ type: "success", message: "User deleted successfully" });
+    } catch (err: any) {
+      console.error("Failed to delete user:", err?.response || err);
+      const message = err?.response?.data?.message || err?.message || "Failed to delete user.";
+      notification?.notify({ type: "error", message });
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
+
+  const handleRegistrationSuccess = async () => {
     setShowRegistrationForm(false);
-    fetchUsers();
+    await fetchUsers();
+    await onRefresh?.();
     notification?.notify({ type: "success", message: "User registered successfully!" });
   };
 
@@ -862,7 +934,9 @@ const UsersManagement: React.FC = () => {
 
           {loading ? (
             <p>Loading users...</p>
-          ) : users.length > 0 ? (
+          ) : fetchError ? (
+            <p className="error-message">{fetchError}</p>
+          ) : Array.isArray(users) && users.length > 0 ? (
             <div className="table-responsive">
               <table className="management-table">
                 <thead>
@@ -872,6 +946,7 @@ const UsersManagement: React.FC = () => {
                     <th>Email</th>
                     <th>Contact</th>
                     <th>Role</th>
+                    <th>Status</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -884,6 +959,14 @@ const UsersManagement: React.FC = () => {
                       <td>{user.contact || "N/A"}</td>
                       <td>{user.specialisation || "User"}</td>
                       <td>
+                        <span style={{
+                          color: user.is_active ? '#10b981' : '#ef4444',
+                          fontWeight: 'bold'
+                        }}>
+                          {user.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td>
                         <button
                           className="btn-edit"
                           onClick={() => handleEditClick(user)}
@@ -892,10 +975,18 @@ const UsersManagement: React.FC = () => {
                           {editingUser?.id === user.id ? "Editing..." : "Edit"}
                         </button>
                         <button
+                          className={`btn-toggle ${user.is_active ? 'btn-deactivate' : 'btn-activate'}`}
+                          onClick={() => handleToggleUserStatus(user)}
+                          disabled={togglingUserId === user.id}
+                        >
+                          {togglingUserId === user.id ? "Updating..." : (user.is_active ? "Deactivate" : "Activate")}
+                        </button>
+                        <button
                           className="btn-delete"
                           onClick={() => handleDelete(user.id)}
+                          disabled={deletingUserId === user.id}
                         >
-                          Delete
+                          {deletingUserId === user.id ? "Deleting..." : "Delete"}
                         </button>
                       </td>
                     </tr>
@@ -913,7 +1004,7 @@ const UsersManagement: React.FC = () => {
 };
 
 // ============ HOSPITAL MANAGEMENT COMPONENT ============
-const HospitalManagement: React.FC = () => {
+const HospitalManagement: React.FC<{ onRefresh?: () => Promise<void> }> = ({ onRefresh }) => {
   const [hospitals, setHospitals] = useState<any[]>([]);
   const [devices, setDevices] = useState<any[]>([]);
   const [selectedHospital, setSelectedHospital] = useState<any | null>(null);
@@ -994,6 +1085,7 @@ const HospitalManagement: React.FC = () => {
       const data = await api.createHospital(hospitalForm);
       setHospitals((prev) => [data.data || data, ...prev]);
       setHospitalForm({ name: "", email: "", phone: "", address: "" });
+      await onRefresh?.();
       setMessage("Hospital registered successfully.");
     } catch (err: any) {
       console.error("Failed to create hospital:", err);
@@ -1016,6 +1108,7 @@ const HospitalManagement: React.FC = () => {
         setSelectedHospital(null);
         setDevices([]);
       }
+      await onRefresh?.();
       setMessage("Hospital deleted successfully.");
     } catch (err: any) {
       console.error("Failed to delete hospital:", err);
@@ -1275,7 +1368,7 @@ const HospitalManagement: React.FC = () => {
 };
 
 // ============ MEDICINES MANAGEMENT COMPONENT ============
-const MedicinesManagement: React.FC = () => {
+const MedicinesManagement: React.FC<{ onRefresh?: () => Promise<void> }> = ({ onRefresh }) => {
   const [medicines, setMedicines] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, _setPage] = useState(1);
@@ -1338,6 +1431,7 @@ const MedicinesManagement: React.FC = () => {
         expiry_date: editForm.expiry_date || null,
       });
       await fetchMeds(page);
+      await onRefresh?.();
       setEditingMedicine(null);
       notification?.notify({ type: "success", message: "Medicine updated successfully." });
     } catch (err) {
@@ -1360,6 +1454,7 @@ const MedicinesManagement: React.FC = () => {
     try {
       await api.deleteMedicine(id);
       setMedicines((prev) => prev.filter((med) => med.id !== id));
+      await onRefresh?.();
       if (editingMedicine?.id === id) {
         setEditingMedicine(null);
       }
@@ -1488,53 +1583,6 @@ const MedicinesManagement: React.FC = () => {
                       </button>
                     </td>
                   </tr>
-                  {editingMedicine?.id === med.id && (
-                    <tr className="edit-dropdown-row">
-                      <td colSpan={7}>
-                        <div className="form-card edit-medicine-card">
-                          <h4 style={{ fontWeight: 'bold' }}>Edit Medicine #{editingMedicine.id}</h4>
-                          <div className="form-grid">
-                            <label>
-                              Name
-                              <input
-                                type="text"
-                                value={editForm.name}
-                                onChange={(e) => handleEditChange("name", e.target.value)}
-                              />
-                            </label>
-                            <label>
-                              Description
-                              <textarea
-                                value={editForm.description}
-                                onChange={(e) => handleEditChange("description", e.target.value)}
-                              />
-                            </label>
-                            <label>
-                              Expiry Date
-                              <input
-                                type="date"
-                                value={editForm.expiry_date}
-                                onChange={(e) => handleEditChange("expiry_date", e.target.value)}
-                              />
-                            </label>
-                          </div>
-                          <div style={{ marginTop: 16, display: "flex", gap: 12, flexWrap: "wrap" }}>
-                            <button
-                              className="btn-primary"
-                              type="button"
-                              onClick={handleSaveMedicine}
-                              disabled={saving}
-                            >
-                              {saving ? "Saving..." : "Save Changes"}
-                            </button>
-                            <button className="btn-delete" type="button" onClick={handleCancelEdit}>
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
                 </React.Fragment>
               ))}
             </tbody>
@@ -1543,6 +1591,142 @@ const MedicinesManagement: React.FC = () => {
         </>
       ) : (
         <p className="no-data">No medicines found</p>
+      )}
+
+      {/* Edit Medicine Modal Overlay */}
+      {editingMedicine && (
+        <>
+          {/* Backdrop */}
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0, 0, 0, 0.5)",
+              zIndex: 100,
+              animation: "fadeIn 0.3s ease",
+            }}
+            onClick={handleCancelEdit}
+          />
+
+          {/* Centered Modal */}
+          <div
+            style={{
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              zIndex: 101,
+              width: "90%",
+              maxWidth: "600px",
+              background: "white",
+              borderRadius: "12px",
+              padding: "28px",
+              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
+              animation: "slideUp 0.3s ease",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ fontWeight: "bold", marginBottom: "20px" }}>
+              Edit Medicine #{editingMedicine.id}
+            </h3>
+            <div
+              style={{
+                display: "grid",
+                gap: "16px",
+                marginBottom: "24px",
+              }}
+            >
+              <label style={{ display: "block" }}>
+                <span style={{ fontWeight: 600, marginBottom: "6px", display: "block" }}>Name</span>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) => handleEditChange("name", e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #d1d5db",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </label>
+              <label style={{ display: "block" }}>
+                <span style={{ fontWeight: 600, marginBottom: "6px", display: "block" }}>Description</span>
+                <textarea
+                  value={editForm.description}
+                  onChange={(e) => handleEditChange("description", e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #d1d5db",
+                    fontSize: "14px",
+                    resize: "vertical",
+                    minHeight: "100px",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </label>
+              <label style={{ display: "block" }}>
+                <span style={{ fontWeight: 600, marginBottom: "6px", display: "block" }}>Expiry Date</span>
+                <input
+                  type="date"
+                  value={editForm.expiry_date}
+                  onChange={(e) => handleEditChange("expiry_date", e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #d1d5db",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </label>
+            </div>
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={handleSaveMedicine}
+                disabled={saving}
+                style={{
+                  background: "#22c55e",
+                  color: "white",
+                  border: "none",
+                  padding: "10px 20px",
+                  borderRadius: "6px",
+                  cursor: saving ? "not-allowed" : "pointer",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  opacity: saving ? 0.6 : 1,
+                }}
+              >
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                style={{
+                  background: "#ef4444",
+                  color: "white",
+                  border: "none",
+                  padding: "10px 20px",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -1553,7 +1737,6 @@ const PrescriptionsManagement: React.FC = () => {
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, _setPage] = useState(1);
-  const notification = useContext(NotificationContext);
 
   useEffect(() => {
     const fetchPrescriptions = async () => {
@@ -1570,51 +1753,6 @@ const PrescriptionsManagement: React.FC = () => {
     fetchPrescriptions();
   }, [page]);
 
-  const handlePrintSeal = async (sealCode: string) => {
-    try {
-      const response = await api.getPrintableSeal(sealCode);
-      if (response) {
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-          printWindow.document.write(`
-            <html>
-              <head>
-                <title>QR Seal: ${sealCode}</title>
-                <style>
-                  body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #fff; color: #111; }
-                  .seal-container { border: 2px solid #333; padding: 20px; margin: 20px auto; max-width: 420px; }
-                  .qr-code { margin: 20px 0; }
-                  .qr-code img { max-width: 100%; height: auto; }
-                  .seal-info { font-size: 12px; color: #666; margin-top: 14px; }
-                </style>
-              </head>
-              <body>
-                <div class="seal-container">
-                  <h2 style={{ fontWeight: 'bold' }}>Prescription QR Seal</h2>
-                  ${response.qr_code_url ? '<div class="qr-code"><img src="' + response.qr_code_url + '" alt="QR Code" /></div>' : '<p>No QR code available.</p>'}
-                  <div class="seal-info">
-                    <p>Generated: ${new Date().toLocaleString()}</p>
-                    <p>Scan this QR code to verify the medicine authenticity.</p>
-                  </div>
-                </div>
-                <script>
-                  window.onload = function() {
-                    window.print();
-                    window.close();
-                  };
-                </script>
-              </body>
-            </html>
-          `);
-          printWindow.document.close();
-        }
-      }
-    } catch (err) {
-      console.error("Failed to get printable seal:", err);
-      notification?.notify({ type: "error", message: "Failed to generate printable seal. Please try again." });
-    }
-  };
-
   return (
     <div className="management-section">
       <h3 style={{ fontWeight: 'bold' }}>Prescription Management</h3>
@@ -1628,10 +1766,8 @@ const PrescriptionsManagement: React.FC = () => {
                 <th>ID</th>
                 <th>Patient</th>
                 <th>Medicine</th>
-                <th>QR Code</th>
                 <th>Status</th>
                 <th>Created</th>
-                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -1641,35 +1777,11 @@ const PrescriptionsManagement: React.FC = () => {
                   <td>{prescription.patient_name || "N/A"}</td>
                   <td>{prescription.medicine?.name || "N/A"}</td>
                   <td>
-                    {prescription.seal_code?.qr_code_url ? (
-                      <img
-                        src={prescription.seal_code.qr_code_url}
-                        alt="Prescription QR Code"
-                        style={{ width: '54px', height: '54px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #ccc' }}
-                      />
-                    ) : (
-                      <span style={{ color: '#999', fontSize: '12px' }}>Pending</span>
-                    )}
-                  </td>
-                  <td>
                     <span className={`status-badge status-${prescription.status}`}>
                       {prescription.status}
                     </span>
                   </td>
                   <td>{new Date(prescription.created_at).toLocaleDateString()}</td>
-                  <td>
-                    {prescription.seal_code ? (
-                      <button
-                        className="btn-print"
-                        onClick={() => handlePrintSeal(prescription.seal_code.code)}
-                        title="Print QR code"
-                      >
-                        Print QR
-                      </button>
-                    ) : (
-                      <span style={{ color: '#999', fontSize: '12px' }}>No seal</span>
-                    )}
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1683,7 +1795,7 @@ const PrescriptionsManagement: React.FC = () => {
 };
 
 // ============ DELIVERIES MANAGEMENT COMPONENT ============
-const DeliveriesManagement: React.FC = () => {
+const DeliveriesManagement: React.FC<{ onRefresh?: () => Promise<void> }> = ({ onRefresh }) => {
   const [deliveries, setDeliveries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, _setPage] = useState(1);
@@ -1714,6 +1826,7 @@ const DeliveriesManagement: React.FC = () => {
           d.id === id ? { ...d, status: newStatus } : d
         )
       );
+      await onRefresh?.();
       notification?.notify({ type: "success", message: "Status updated successfully" });
     } catch (err) {
       notification?.notify({ type: "error", message: "Failed to update status" });
@@ -1800,83 +1913,6 @@ const DeliveriesManagement: React.FC = () => {
         </div>
       ) : (
         <p className="no-data">No deliveries found</p>
-      )}
-    </div>
-  );
-};
-
-// ============ INVENTORY MANAGEMENT COMPONENT ============
-const InventoryManagement: React.FC = () => {
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, _setPage] = useState(1);
-
-  useEffect(() => {
-    const fetchInv = async () => {
-      try {
-        const data = await api.fetchInventory(page);
-        setInventory(data.data || data);
-      } catch (err) {
-        console.error("Failed to fetch inventory:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchInv();
-  }, [page]);
-
-  const getStockColor = (quantity: number) => {
-    if (quantity < 10) return "critical";
-    if (quantity < 50) return "low";
-    return "adequate";
-  };
-
-  return (
-    <div className="management-section">
-      <h3 style={{ fontWeight: 'bold' }}>Inventory Management</h3>
-      {loading ? (
-        <p>Loading inventory...</p>
-      ) : inventory.length > 0 ? (
-        <div className="table-responsive">
-          <table className="management-table">
-            <thead>
-              <tr>
-                <th>Medicine</th>
-                <th>Stock (Units)</th>
-                <th>Status</th>
-                <th>Expiry Date</th>
-                <th>Location</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {inventory.map((item) => {
-                const medicineName = item.medicine?.name || `Medicine #${item.medicine_id}`;
-                const stockStatus = getStockColor(item.quantity);
-
-                return (
-                  <tr key={item.id}>
-                    <td>{medicineName}</td>
-                    <td>{item.quantity}</td>
-                    <td>
-                      <span className={`stock-badge stock-${stockStatus}`}>
-                        {stockStatus}
-                      </span>
-                    </td>
-                    <td>{new Date(item.expiry_date).toLocaleDateString()}</td>
-                    <td>{item.location || "Warehouse"}</td>
-                    <td>
-                      <button className="btn-edit">Edit</button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="no-data">No inventory items found</p>
       )}
     </div>
   );

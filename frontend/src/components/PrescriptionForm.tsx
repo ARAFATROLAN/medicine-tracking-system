@@ -125,6 +125,27 @@ const PrescriptionForm: React.FC<PrescriptionFormProps> = ({
       }
     }
 
+    const stockMap = new Map<number, number>();
+    medicines.forEach((medicine) => stockMap.set(medicine.id, medicine.quantity));
+    const requestedQuantities = new Map<number, number>();
+
+    for (let med of selectedMedicines) {
+      const currentRequested = requestedQuantities.get(med.id) || 0;
+      requestedQuantities.set(med.id, currentRequested + med.quantity);
+    }
+
+    for (let [medicineId, totalRequested] of requestedQuantities.entries()) {
+      const available = stockMap.get(medicineId) ?? 0;
+      if (totalRequested > available) {
+        const medicine = medicines.find((m) => m.id === medicineId);
+        const medicineName = medicine?.name || "Selected medicine";
+        setError(
+          `${medicineName} only has ${available} unit${available === 1 ? "" : "s"} remaining.`
+        );
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
